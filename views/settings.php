@@ -55,17 +55,23 @@ echo $this->Form->Errors();
       <ul>
          <li>
             <?php
-               echo $this->Form->Label('Consumer Key', 'ConsumerKey');
-               echo $this->Form->TextBox('ConsumerKey');
+               echo $this->Form->Label('Client ID', 'ClientID');
+               echo $this->Form->TextBox('ClientID');
             ?>
          </li>
          <li>
             <?php
-               echo $this->Form->Label('Consumer Secret', 'Secret');
+               echo $this->Form->Label('Client Secret', 'Secret');
                echo $this->Form->TextBox('Secret');
             ?>
          </li>
          
+		  <li>
+            <?php
+               echo $this->Form->CheckBox('SocialSignIn', 'Enable Social Sign In');
+            ?>
+         </li>
+		 
       </ul>
       <?php echo $this->Form->Button('Save', array('class' => 'Button SliceSubmit')); ?>
    </div>
@@ -73,12 +79,13 @@ echo $this->Form->Errors();
       <p><strong>How to set up Reddit Connect</strong></p>
       <ol>
          <li>You must register Vanilla with Reddit at: <a href="https://ssl.reddit.com/prefs/apps">https://ssl.reddit.com/prefs/apps</a></li>
-         <li>Set the <strong>Callback URL</strong> by appending &ldquo;/entry/rdauthorize&rdquo; to the end of your forum&rsquo;s URL. 
+         <li>Set the <strong>Callback URL</strong> by appending &ldquo;entry/connect/reddit&rdquo; to the end of your forum&rsquo;s URL. 
          (If your forum is at example.com/forum, your Callback URL would be http://example.com/forum/entry/rdauthorize).</li>
          <li>After registering, copy the "Consumer Key" and "Consumer Secret" into the form on this page and click Save.</li>
       </ol>
-      <p><?php echo Anchor(Img('/plugins/Reddit/design/help-consumervalues-sm.png', array('style' => 'max-width: 763px;')), '/plugins/Reddit/design/help-consumervalues.png', array('target' => '_blank')); ?></p>
+      <p><?php echo Anchor(Img('/plugins/Reddit/design/help-consumervalues-sm.png', array('style' => 'max-width: 763px;')), '/plugins/Reddit/design/help-consumervalues-sm.png', array('target' => '_blank')); ?></p>
    </div>
+  
 </div>   
 <?php
    echo $this->Form->Close();

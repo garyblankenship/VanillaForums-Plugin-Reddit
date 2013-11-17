@@ -35,193 +35,184 @@ require_once PATH_LIBRARY.'/vendors/oauth/OAuth.php';
 
 class RedditPlugin extends Gdn_Plugin {
    const ProviderKey = 'Reddit';
-   public static $BaseApiUrl = 'https://ssl.reddit.com/api/v1/';
-
+   
    protected $_AccessToken = NULL;
    
-   /**
-    * Gets/sets the current oauth access token.
-    *
-    * @param string $Token
-    * @param string $Secret
-    * @return OAuthToken
-    */
-   public function AccessToken($Token = NULL, $Secret = NULL) {
+   public function AccessToken() {
       if (!$this->IsConfigured()) 
          return FALSE;
       
-      if (is_object($Token)) {
-         $this->_AccessToken = $Token;
-      } if ($Token !== NULL && $Secret !== NULL) {
-         $this->_AccessToken = new OAuthToken($Token, $Secret);
-      } elseif ($this->_AccessToken == NULL) {
-         if ($Token)
-            $this->_AccessToken = $this->GetOAuthToken($Token);
-         elseif (Gdn::Session()->User) {
-            $AccessToken = GetValueR(self::ProviderKey.'.AccessToken', Gdn::Session()->User->Attributes);
-            
-            if (is_array($AccessToken)) {
-               $this->_AccessToken = new OAuthToken($AccessToken[0], $AccessToken[1]);
-            }
-         }
+      if ($this->_AccessToken === NULL) {
+         if (Gdn::Session()->IsValid())
+            $this->_AccessToken = GetValueR(self::ProviderKey.'.AccessToken', Gdn::Session()->User->Attributes);
+         else
+            $this->_AccessToken = FALSE;
       }
+      
       return $this->_AccessToken;
    }
 
+   public function Authorize($Query = FALSE) {
+      $Uri = $this->AuthorizeUri($Query);
+      Redirect($Uri);
+   }
+   
+   public function API($Path, $Post = FALSE) {
+      // Build the url.
+      $Url = 'https://ssl.reddit.com/api/v1/authorize'.ltrim($Path, '/');
+      
+      $AccessToken = $this->AccessToken();
+      if (!$AccessToken)
+         throw new Gdn_UserException("You don't have a valid Reddit connection.");
+      
+      if (strpos($Url, '?') === false)
+         $Url .= '?';
+      else
+         $Url .= '&';
+      $Url .= 'access_token='.urlencode($AccessToken);
 
-   protected function _AuthorizeHref($Popup = FALSE) {
-      $Url = Url('/entry/rdauthorize', TRUE);
-      $UrlParts = explode('?', $Url);
+      $ch = curl_init();
+      curl_setopt($ch, CURLOPT_HEADER, false);
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+      curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+      curl_setopt($ch, CURLOPT_URL, $Url);
 
-      parse_str(GetValue(1, $UrlParts, ''), $Query);
-      $Path = Gdn::Request()->Path();
+      if ($Post !== false) {
+         curl_setopt($ch, CURLOPT_POST, true);
+         curl_setopt($ch, CURLOPT_POSTFIELDS, $Post); 
+         Trace("  POST $Url");
+      } else {
+         Trace("  GET  $Url");
+      }
 
-      $Target = GetValue('Target', $_GET, $Path ? $Path : '/');
-      if (ltrim($Target, '/') == 'entry/signin')
-         $Target = '/';
-      $Query['Target'] = $Target;
+      $Response = curl_exec($ch);
 
-      if ($Popup)
-         $Query['display'] = 'popup';
-      $Result = $UrlParts[0].'?'.http_build_query($Query);
+      $HttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+      $ContentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+      curl_close($ch);
+      
+      Gdn::Controller()->SetJson('Type', $ContentType);
+
+      if (strpos($ContentType, 'javascript') !== FALSE) {
+         $Result = json_decode($Response, TRUE);
+         
+         if (isset($Result['error'])) {
+            Gdn::Dispatcher()->PassData('RedditResponse', $Result);
+            throw new Gdn_UserException($Result['error']['message']);
+         }
+      } else
+         $Result = $Response;
 
       return $Result;
    }
+
+
 
    /**
     *
     * @param Gdn_Controller $Sender
     */
    public function EntryController_SignIn_Handler($Sender, $Args) {
+      if (!$this->SocialSignIn())
+         return;
+      
       if (isset($Sender->Data['Methods'])) {
-         if (!$this->IsConfigured())
-            return;
-
          $ImgSrc = Asset('/plugins/Reddit/design/reddit-signin.png');
          $ImgAlt = T('Sign In with Reddit');
-            $SigninHref = $this->_AuthorizeHref();
-            $PopupSigninHref = $this->_AuthorizeHref(TRUE);
 
-            // Add the Reddit method to the controller.
-            $RdMethod = array(
-               'Name' => 'Reddit',
-               'SignInHtml' => "<a id=\"RedditAuth\" href=\"$SigninHref\" class=\"PopupWindow\" popupHref=\"$PopupSigninHref\" popupHeight=\"400\" popupWidth=\"800\" rel=\"nofollow\"><img src=\"$ImgSrc\" alt=\"$ImgAlt\" /></a>");
 
-         $Sender->Data['Methods'][] = $RdMethod;
+            $SigninHref = $this->AuthorizeUri();
+            $PopupSigninHref = $this->AuthorizeUri('display=popup');
+
+            // Add the reddit method to the controller.
+            $FbMethod = array(
+               'Name' => self::ProviderKey,
+               'SignInHtml' => "<a id=\"RedditAuth\" href=\"$SigninHref\" class=\"PopupWindow\" popupHref=\"$PopupSigninHref\" popupHeight=\"326\" popupWidth=\"627\" rel=\"nofollow\" ><img src=\"$ImgSrc\" alt=\"$ImgAlt\" /></a>");
+//         }
+
+         $Sender->Data['Methods'][] = $RDMethod;
       }
    }
    
+   /**
+    * Add 'Reddit' option to the row.
+    */
+
+   
+   public function Base_DiscussionFormOptions_Handler($Sender, $Args) {
+    
+      if (!$this->AccessToken())
+         return;
+      
+      $Options =& $Args['Options'];
+      
+
+   }
+   
+
+   
+
+   
+
+  
    public function Base_SignInIcons_Handler($Sender, $Args) {
-      if (!$this->IsConfigured())
-			return;
-			
+      if (!$this->SocialSignIn())
+         return;
+		
 		echo "\n".$this->_GetButton();
-	}
+   }
 
    public function Base_BeforeSignInButton_Handler($Sender, $Args) {
-      if (!$this->IsConfigured())
-			return;
-			
+      if (!$this->SocialSignIn())
+         return;
+		
 		echo "\n".$this->_GetButton();
 	}
 	
 	public function Base_BeforeSignInLink_Handler($Sender) {
-      if (!$this->IsConfigured())
+      if (!$this->SocialSignIn())
 			return;
+		
+		// if (!IsMobile())
+		// 	return;
 
 		if (!Gdn::Session()->IsValid())
 			echo "\n".Wrap($this->_GetButton(), 'li', array('class' => 'Connect RedditConnect'));
 	}
    
-   
-	private function _GetButton() {      
-      $ImgSrc = Asset('/plugins/Reddit/design/reddit-icon.png');
-      $ImgAlt = T('Sign In with Reddit');
-      $SigninHref = $this->_AuthorizeHref();
-      $PopupSigninHref = $this->_AuthorizeHref(TRUE);
-		return "<a id=\"RedditAuth\" href=\"$SigninHref\" class=\"PopupWindow\" title=\"$ImgAlt\" popupHref=\"$PopupSigninHref\" popupHeight=\"800\" popupWidth=\"800\" rel=\"nofollow\"><img src=\"$ImgSrc\" alt=\"$ImgAlt\" /></a>";
-   }
-
-	public function Authorize($Query = FALSE) {
-      // Aquire the request token.
-      $Consumer = new OAuthConsumer(C('Plugins.Reddit.ConsumerKey'), C('Plugins.Reddit.Secret'));
-      $RedirectUri = $this->RedirectUri();
-      if ($Query)
-         $RedirectUri .= (strpos($RedirectUri, '?') === FALSE ? '?' : '&').$Query;
-
-      $Params = array('oauth_callback' => $RedirectUri);
+   public function Base_GetConnections_Handler($Sender, $Args) {
+      $Profile = GetValueR('User.Attributes.'.self::ProviderKey.'.Profile', $Args);
       
-      $Url = 'https://ssl.reddit.com/api/v1/authorize';
-      $Request = OAuthRequest::from_consumer_and_token($Consumer, NULL, 'POST', $Url, $Params);
-      $SignatureMethod = new OAuthSignatureMethod_HMAC_SHA1();
-      $Request->sign_request($SignatureMethod, $Consumer, null);
-
-      $Curl = $this->_Curl($Request, $Params);
-      $Response = curl_exec($Curl);
-      if ($Response === FALSE) {
-         $Response = curl_error($Curl);
-      }
-
-      $HttpCode = curl_getinfo($Curl, CURLINFO_HTTP_CODE);
-      curl_close($Curl);
-
-      if ($HttpCode == '200') {
-         // Parse the reponse.
-         $Data = OAuthUtil::parse_parameters($Response);
-
-         if (!isset($Data['oauth_token']) || !isset($Data['oauth_token_secret'])) {
-            $Response = T('The response was not in the correct format.');
-         } else {
-            // Save the token for later reference.
-            $this->SetOAuthToken($Data['oauth_token'], $Data['oauth_token_secret'], 'request');
-
-            // Redirect to Reddit's authorization page.
-            $Url = "https://ssl.reddit.com/api/v1/access_token={$Data['oauth_token']}";
-            Redirect($Url);
-         }
-      }
-
-      // There was an error. Echo the error.
-      echo $Response;
+      $Sender->Data["Connections"][self::ProviderKey] = array(
+         'Icon' => $this->GetWebResource('icon.png', '/'),
+         'Name' => 'Reddit',
+         'ProviderKey' => self::ProviderKey,
+         'ConnectUrl' => $this->AuthorizeUri(FALSE, self::ProfileConnecUrl()),
+         'Profile' => array(
+            'Name' => GetValue('name', $Profile)
+            )
+      );
    }
-
-   public function EntryController_rdauthorize_Create($Sender, $Dir = '') {
-      $Query = ArrayTranslate($Sender->Request->Get(), array('display', 'Target'));
-      $Query = http_build_query($Query);
-      
-      if ($Dir == 'profile') {
-         // This is a profile connection.
-         $this->RedirectUri(self::ProfileConnecUrl());
-      }
-      
-      $this->Authorize($Query);
-   }
-   
-
    
    /**
+    * 
     * 
     * @param ProfileController $Sender
     * @param type $UserReference
     * @param type $Username
-    * @param type $oauth_token
-    * @param type $oauth_verifier
+    * @param type $Code
     */
-   public function ProfileController_RedditConnect_Create($Sender, $UserReference = '', $Username = '', $oauth_token = '', $oauth_verifier = '') {
+   public function ProfileController_RedditConnect_Create($Sender, $UserReference, $Username, $Code = FALSE) {
       $Sender->Permission('Garden.SignIn.Allow');
       
       $Sender->GetUserInfo($UserReference, $Username, '', TRUE);
-      
       $Sender->_SetBreadcrumbs(T('Connections'), '/profile/connections');
       
       // Get the access token.
-      Trace('GetAccessToken()');
-      $AccessToken = $this->GetAccessToken($oauth_token, $oauth_verifier);
-      $this->AccessToken($AccessToken);
+      $AccessToken = $this->GetAccessToken($Code, self::ProfileConnecUrl());
       
       // Get the profile.
-      Trace('GetProfile()');
-      $Profile = $this->GetProfile();
+      $Profile = $this->GetProfile($AccessToken);
       
       // Save the authentication.
       Gdn::UserModel()->SaveAuthentication(array(
@@ -231,7 +222,7 @@ class RedditPlugin extends Gdn_Plugin {
       
       // Save the information as attributes.
       $Attributes = array(
-          'AccessToken' => array($AccessToken->key, $AccessToken->secret),
+          'AccessToken' => $AccessToken,
           'Profile' => $Profile
       );
       Gdn::UserModel()->SaveAttribute($Sender->User->UserID, self::ProviderKey, $Attributes);
@@ -242,49 +233,39 @@ class RedditPlugin extends Gdn_Plugin {
       
       Redirect(UserUrl($Sender->User, '', 'connections'));
    }
-   
-   public function GetAccessToken($RequestToken, $Verifier) {
-      if ((!$RequestToken || !$Verifier) && Gdn::Request()->Get('denied')) {
-         throw new Gdn_UserException(T('Looks like you denied our request.'), 401);
-      }
-      
-      // Get the request secret.
-      $RequestToken = $this->GetOAuthToken($RequestToken);
+	
+	private function _GetButton() {
+      $ImgSrc = Asset('/plugins/Reddit/design/reddit-icon.png');
+      $ImgAlt = T('Sign In with Reddit');
+      $SigninHref = $this->AuthorizeUri();
+      $PopupSigninHref = $this->AuthorizeUri('display=popup');
+      return "<a id=\"RedditAuth\" href=\"$SigninHref\" class=\"PopupWindow\" title=\"$ImgAlt\" popupHref=\"$PopupSigninHref\" popupHeight=\"326\" popupWidth=\"627\" rel=\"nofollow\" ><img src=\"$ImgSrc\" alt=\"$ImgAlt\" align=\"bottom\" /></a>";
+   }
+	
+   public function SocialController_Reddit_Create($Sender, $Args) {
+      $Sender->Permission('Garden.Settings.Manage');
+      if ($Sender->Form->IsPostBack()) {
+         $Settings = array(
+             'Plugins.Reddit.ClientID' => $Sender->Form->GetFormValue('ClientID'),
+             'Plugins.Reddit.Secret' => $Sender->Form->GetFormValue('Secret'),
+             'Plugins.Reddit.UseRedditNames' => $Sender->Form->GetFormValue('UseRedditNames'),
+             'Plugins.Reddit.SocialSignIn' => $Sender->Form->GetFormValue('SocialSignIn'),
+             'Garden.Registration.SendConnectEmail' => $Sender->Form->GetFormValue('SendConnectEmail'));
 
-      $Consumer = new OAuthConsumer(C('Plugins.Reddit.ConsumerKey'), C('Plugins.Reddit.Secret'));
-
-      $Url = "https://ssl.reddit.com/api/v1/access_token?";
-      $Params = array(
-          'oauth_verifier' => $Verifier //GetValue('oauth_verifier', $_GET)
-      );
-      $Request = OAuthRequest::from_consumer_and_token($Consumer, $RequestToken, 'POST', $Url, $Params);
-
-      $SignatureMethod = new OAuthSignatureMethod_HMAC_SHA1();
-      $Request->sign_request($SignatureMethod, $Consumer, $RequestToken);
-      $Post = $Request->to_postdata();
-
-      $Curl = $this->_Curl($Request);
-      $Response = curl_exec($Curl);
-      if ($Response === FALSE) {
-         $Response = curl_error($Curl);
-      }
-      $HttpCode = curl_getinfo($Curl, CURLINFO_HTTP_CODE);
-      curl_close($Curl);
-
-      if ($HttpCode == '200') {
-         $Data = OAuthUtil::parse_parameters($Response);
-
-         $AccessToken = new OAuthToken(GetValue('oauth_token', $Data), GetValue('oauth_token_secret', $Data));
-
-         // Delete the request token.
-         $this->DeleteOAuthToken($RequestToken);
+         SaveToConfig($Settings);
+         $Sender->InformMessage(T("Your settings have been saved."));
 
       } else {
-         // There was some sort of error.
-         throw new Gdn_UserException('There was an error authenticating with Reddit. '.$Response, $HttpCode);
+         $Sender->Form->SetValue('ClientID', C('Plugins.Reddit.ClientID'));
+         $Sender->Form->SetValue('Secret', C('Plugins.Reddit.Secret'));
+         $Sender->Form->SetValue('UseRedditNames', C('Plugins.Reddit.UseRedditNames'));
+         $Sender->Form->SetValue('SendConnectEmail', C('Garden.Registration.SendConnectEmail', FALSE));
+         $Sender->Form->SetValue('SocialSignIn', C('Plugins.Reddit.SocialSignIn', TRUE));
       }
 
-      return $AccessToken;
+      $Sender->AddSideMenu('dashboard/social');
+      $Sender->SetData('Title', T('Reddit Settings'));
+      $Sender->Render('Settings', '', 'plugins/Reddit');
    }
 
    /**
@@ -293,61 +274,31 @@ class RedditPlugin extends Gdn_Plugin {
     * @param array $Args
     */
    public function Base_ConnectData_Handler($Sender, $Args) {
-      if (GetValue(0, $Args) != 'Reddit')
+      if (GetValue(0, $Args) != 'reddit')
          return;
-      
-      $Form = $Sender->Form; //new Gdn_Form();
 
-      $RequestToken = GetValue('oauth_token', $_GET);
-      $AccessToken = $Form->GetFormValue('AccessToken');
-      
-      if ($AccessToken) {
-         $AccessToken = $this->GetOAuthToken($AccessToken);
-         $this->AccessToken($AccessToken);
+      if (isset($_GET['error'])) {
+         throw new Gdn_UserException(GetValue('error_description', $_GET, T('There was an error connecting to Reddit')));
       }
+
+      $AppID = C('Plugins.Reddit.ClientID');
+      $Secret = C('Plugins.Reddit.Secret');
+      $Code = GetValue('code', $_GET);
+      $Query = '';
+      if ($Sender->Request->Get('display'))
+         $Query = 'display='.urlencode($Sender->Request->Get('display'));
+
+      $RedirectUri = ConcatSep('&', $this->RedirectUri(), $Query);
+      
+      $AccessToken = $Sender->Form->GetFormValue('AccessToken');
       
       // Get the access token.
-      if ($RequestToken && !$AccessToken) {
-         // Get the request secret.
-         $RequestToken = $this->GetOAuthToken($RequestToken);
-
-         $Consumer = new OAuthConsumer(C('Plugins.Reddit.ConsumerKey'), C('Plugins.Reddit.Secret'));
-
-         $Url = 'https://ssl.reddit.com/api/v1/access_token?';
-         $Params = array(
-             'oauth_verifier' => GetValue('oauth_verifier', $_GET)
-         );
-         $Request = OAuthRequest::from_consumer_and_token($Consumer, $RequestToken, 'POST', $Url, $Params);
+      if (!$AccessToken && $Code) {
+         // Exchange the token for an access token.
+         $Code = urlencode($Code);
          
-         $SignatureMethod = new OAuthSignatureMethod_HMAC_SHA1();
-         $Request->sign_request($SignatureMethod, $Consumer, $RequestToken);
-         $Post = $Request->to_postdata();
+         $AccessToken = $this->GetAccessToken($Code, $RedirectUri);
 
-         $Curl = $this->_Curl($Request);
-         $Response = curl_exec($Curl);
-         if ($Response === FALSE) {
-            $Response = curl_error($Curl);
-         }
-         $HttpCode = curl_getinfo($Curl, CURLINFO_HTTP_CODE);
-         curl_close($Curl);
-
-         if ($HttpCode == '200') {
-            $Data = OAuthUtil::parse_parameters($Response);
-
-            $AccessToken = new OAuthToken(GetValue('oauth_token', $Data), GetValue('oauth_token_secret', $Data));
-            
-            // Save the access token to the database.
-            $this->SetOAuthToken($AccessToken->key, $AccessToken->secret, 'access');
-            $this->AccessToken($AccessToken->key, $AccessToken->secret);
-
-            // Delete the request token.
-            $this->DeleteOAuthToken($RequestToken);
-            
-         } else {
-            // There was some sort of error.
-            throw new Exception('There was an error authenticating with Reddit.', 400);
-         }
-         
          $NewToken = TRUE;
       }
 
@@ -358,176 +309,101 @@ class RedditPlugin extends Gdn_Plugin {
          if (!isset($NewToken)) {
             // There was an error getting the profile, which probably means the saved access token is no longer valid. Try and reauthorize.
             if ($Sender->DeliveryType() == DELIVERY_TYPE_ALL) {
-               Redirect($this->_AuthorizeHref());
+               Redirect($this->AuthorizeUri());
             } else {
                $Sender->SetHeader('Content-type', 'application/json');
                $Sender->DeliveryMethod(DELIVERY_METHOD_JSON);
-               $Sender->RedirectUrl = $this->_AuthorizeHref();
+               $Sender->RedirectUrl = $this->AuthorizeUri();
             }
          } else {
-            throw $Ex;
+            $Sender->Form->AddError('There was an error with the Reddit connection.');
          }
       }
-      
+
+      $Form = $Sender->Form; //new Gdn_Form();
       $ID = GetValue('id', $Profile);
       $Form->SetFormValue('UniqueID', $ID);
       $Form->SetFormValue('Provider', self::ProviderKey);
       $Form->SetFormValue('ProviderName', 'Reddit');
-      $Form->SetValue('ConnectName', GetValue('screen_name', $Profile));
-      $Form->SetFormValue('Name', GetValue('screen_name', $Profile));
       $Form->SetFormValue('FullName', GetValue('name', $Profile));
-      $Form->SetFormValue('Photo', GetValue('profile_image_url', $Profile));
-      $Form->AddHidden('AccessToken', $AccessToken->key);
+      $Form->SetFormValue('Email', GetValue('email', $Profile));
+      $Form->AddHidden('AccessToken', $AccessToken);
+      
+      if (C('Plugins.Reddit.UseRedditNames')) {
+         $Form->SetFormValue('Name', GetValue('name', $Profile));
+         SaveToConfig(array(
+             'Garden.User.ValidationRegex' => UserModel::USERNAME_REGEX_MIN,
+             'Garden.User.ValidationLength' => '{3,50}',
+             'Garden.Registration.NameUnique' => FALSE
+         ), '', FALSE);
+      }
       
       // Save some original data in the attributes of the connection for later API calls.
-      $Attributes = array(self::ProviderKey => array(
-          'AccessToken' => array($AccessToken->key, $AccessToken->secret),
+      $Attributes = array();
+      $Attributes[self::ProviderKey] = array(
+          'AccessToken' => $AccessToken,
           'Profile' => $Profile
-      ));
+      );
       $Form->SetFormValue('Attributes', $Attributes);
       
       $Sender->SetData('Verified', TRUE);
    }
    
-   public function Base_GetConnections_Handler($Sender, $Args) {
-      $Profile = GetValueR('User.Attributes.'.self::ProviderKey.'.Profile', $Args);
+   protected function GetAccessToken($Code, $RedirectUri, $ThrowError = TRUE) {
+      $Get = array(
+          'client_id' => C('Plugins.Reddit.ClientID'),
+          'client_secret' => C('Plugins.Reddit.Secret'),
+          'code' => $Code,
+          'redirect_uri' => $RedirectUri);
       
-      $Sender->Data["Connections"][self::ProviderKey] = array(
-         'Icon' => $this->GetWebResource('icon.png', '/'),
-         'Name' => 'Reddit',
-         'ProviderKey' => self::ProviderKey,
-         'ConnectUrl' => '/entry/rdauthorize/profile',
-         'Profile' => array(
-             'Name' => '@'.GetValue('screen_name', $Profile),
-             'Photo' => GetValue('profile_image_url', $Profile)
-             )
-      );
-   }
+      $Url = 'https://ssl.reddit.com/api/v1/access_token?'.http_build_query($Get);
+      
+      // Get the redirect URI.
+      $C = curl_init();
+      curl_setopt($C, CURLOPT_RETURNTRANSFER, TRUE);
+      curl_setopt($C, CURLOPT_SSL_VERIFYPEER, FALSE);
+      curl_setopt($C, CURLOPT_URL, $Url);
+      $Contents = curl_exec($C);
 
-   public function API($Url, $Params = NULL, $Method = 'GET') {
-      if (strpos($Url, '//') === FALSE)
-         $Url = self::$BaseApiUrl.trim($Url, '/');
-      $Consumer = new OAuthConsumer(C('Plugins.Reddit.ConsumerKey'), C('Plugins.Reddit.Secret'));
-      
-      if ($Method == 'POST') {
-         $Post = $Params;
-      } else
-         $Post = NULL;
-
-      $AccessToken = $this->AccessToken();
-
-      
-      $Request = OAuthRequest::from_consumer_and_token($Consumer, $AccessToken, $Method, $Url, $Params);
-      
-      $SignatureMethod = new OAuthSignatureMethod_HMAC_SHA1();
-      $Request->sign_request($SignatureMethod, $Consumer, $AccessToken);
-      
-      $Curl = $this->_Curl($Request, $Post);
-      curl_setopt($Curl, CURLINFO_HEADER_OUT, TRUE);
-      $Response = curl_exec($Curl);
-      $HttpCode = curl_getinfo($Curl, CURLINFO_HTTP_CODE);
-      
-      if ($Response == FALSE) {
-         $Response = curl_error($Curl);
-      }
-      
-
-      Trace(curl_getinfo($Curl, CURLINFO_HEADER_OUT));
-      
-      Trace($Response, 'Response');
-      
-
-      curl_close($Curl);
-
-      Gdn::Controller()->SetJson('Response', $Response);
-      if (strpos($Url, '.json') !== FALSE) {
-         $Result = @json_decode($Response, TRUE) or $Response;
+      $Info = curl_getinfo($C);
+      if (strpos(GetValue('content_type', $Info, ''), '/javascript') !== FALSE) {
+         $Tokens = json_decode($Contents, TRUE);
       } else {
-         $Result = $Response;
+         parse_str($Contents, $Tokens);
       }
-      
-//      print_r($Result);
-      
-      if ($HttpCode == '200')
-         return $Result;
-      else {
-         throw new Gdn_UserException(GetValueR('errors.0.message', $Result, $Response), $HttpCode);
+
+      if (GetValue('error', $Tokens)) {
+         throw new Gdn_UserException('Reddit returned the following error: '.GetValueR('error.message', $Tokens, 'Unknown error.'), 400);
       }
+
+      $AccessToken = GetValue('access_token', $Tokens);
+
+      
+      return $AccessToken;
    }
 
-   public function GetProfile() {
-      $Profile = $this->API('/me.json?access_token=?', array('include_entities' => '0', 'skip_status' => '1'));
+   public function GetProfile($AccessToken) {
+      $Url = "https://oauth.reddit.com/api/v1/me.json";
+      $Contents = file_get_contents($Url);
+      $Profile = json_decode($Contents, TRUE);
       return $Profile;
    }
 
-   public function GetOAuthToken($Token) {
-      $Row = Gdn::SQL()->GetWhere('UserAuthenticationToken', array('Token' => $Token, 'ProviderKey' => self::ProviderKey))->FirstRow(DATASET_TYPE_ARRAY);
-      if ($Row) {
-         return new OAuthToken($Row['Token'], $Row['TokenSecret']);
-      } else {
-         return NULL;
-      }
-   }
+   public function AuthorizeUri($Query = FALSE, $RedirectUri = FALSE) {
+      $AppID = C('Plugins.Reddit.ClientID');
+      $RDScope = C('Plugins.Reddit.Scope', Array('identity', 'authorization_code'));
 
-   public function IsConfigured() {
-      $Result = C('Plugins.Reddit.ConsumerKey') && C('Plugins.Reddit.Secret');
-      return $Result;
-   }
-   
+      if (!$RedirectUri)
+         $RedirectUri = $this->RedirectUri();
+      if ($Query)
+         $RedirectUri .= '&'.$Query;
+      $RedirectUri = urlencode($RedirectUri);
 
-
-   public function SetOAuthToken($Token, $Secret = NULL, $Type = 'request') {
-      if (is_a($Token, 'OAuthToken')) {
-         $Secret = $Token->secret;
-         $Token = $Token->key;
-      }
-
-      // Insert the token.
-      $Data = array(
-                'Token' => $Token,
-                'ProviderKey' => self::ProviderKey,
-                'TokenSecret' => $Secret,
-                'TokenType' => $Type,
-                'Authorized' => FALSE,
-                'Lifetime' => 60 * 5);
-      Gdn::SQL()->Options('Ignore', TRUE)->Insert('UserAuthenticationToken', $Data);
-   }
-
-   public function DeleteOAuthToken($Token) {
-      if (is_a($Token, 'OAuthToken')) {
-         $Token = $Token->key;
-      }
-      
-      Gdn::SQL()->Delete('UserAuthenticationToken', array('Token' => $Token, 'ProviderKey' => self::ProviderKey));
-   }
-
-   /**
-    *
-    * @param OAuthRequest $Request 
-    */
-   protected function _Curl($Request, $Post = NULL) {
-      $C = curl_init();
-      curl_setopt($C, CURLOPT_RETURNTRANSFER, TRUE);
-		curl_setopt($C, CURLOPT_SSL_VERIFYPEER, FALSE);
-      switch ($Request->get_normalized_http_method()) {
-         case 'POST':
-//            echo $Request->get_normalized_http_url();
-//            echo "\n\n";
-//            echo $Request->to_postdata();
-            
-            curl_setopt($C, CURLOPT_URL, $Request->get_normalized_http_url());
-//            curl_setopt($C, CURLOPT_HTTPHEADER, array('Authorization' => $Request->to_header()));
-            curl_setopt($C, CURLOPT_POST, TRUE);
-            curl_setopt($C, CURLOPT_POSTFIELDS, $Request->to_postdata());
-            break;
-         default:
-            curl_setopt($C, CURLOPT_URL, $Request->to_url());
-      }
-      return $C;
-   }
-   
-   public static function ProfileConnecUrl() {
-      return Url(UserUrl(Gdn::Session()->User, FALSE, 'redditconnect'), TRUE);
+      $Scopes = implode(',', $RDScope);
+      $SigninHref = "https://ssl.reddit.com/api/v1/authorize?client_id=$AppID&redirect_uri=$RedirectUri";
+      if ($Query)
+         $SigninHref .= '&'.$Query;
+      return $SigninHref;
    }
 
    protected $_RedirectUri = NULL;
@@ -537,47 +413,65 @@ class RedditPlugin extends Gdn_Plugin {
          $this->_RedirectUri = $NewValue;
       elseif ($this->_RedirectUri === NULL) {
          $RedirectUri = Url('/entry/connect/reddit', TRUE);
+         if (strpos($RedirectUri, '=') !== FALSE) {
+            $p = strrchr($RedirectUri, '=');
+            $Uri = substr($RedirectUri, 0, -strlen($p));
+            $p = urlencode(ltrim($p, '='));
+            $RedirectUri = $Uri.'='.$p;
+         }
+
+         $Path = Gdn::Request()->Path();
+
+         $Target = GetValue('Target', $_GET, $Path ? $Path : '/');
+         if (ltrim($Target, '/') == 'entry/signin' || empty($Target))
+            $Target = '/';
+         $Args = array('Target' => $Target);
+
+
+         $RedirectUri .= strpos($RedirectUri, '?') === FALSE ? '?' : '&';
+         $RedirectUri .= http_build_query($Args);
          $this->_RedirectUri = $RedirectUri;
       }
-
+      
       return $this->_RedirectUri;
    }
    
-
-
-
-   public function SocialController_Reddit_Create($Sender, $Args) {
-   	  $Sender->Permission('Garden.Settings.Manage');
-      if ($Sender->Form->IsPostBack()) {
-         $Settings = array(
-             'Plugins.Reddit.ConsumerKey' => $Sender->Form->GetFormValue('ConsumerKey'),
-             'Plugins.Reddit.Secret' => $Sender->Form->GetFormValue('Secret'),
-         );
-
-         SaveToConfig($Settings);
-         $Sender->InformMessage(T("Your settings have been saved."));
-
-      } else {
-         $Sender->Form->SetValue('ConsumerKey', C('Plugins.Reddit.ConsumerKey'));
-         $Sender->Form->SetValue('Secret', C('Plugins.Reddit.Secret'));
-
-      }
-
-      $Sender->AddSideMenu('dashboard/social');
-      $Sender->SetData('Title', T('Reddit Settings'));
-      $Sender->Render('Settings', '', 'plugins/Reddit');
+   public static function ProfileConnecUrl() {
+      return Url(UserUrl(Gdn::Session()->User, FALSE, 'redditconnect'), TRUE);
    }
 
+   public function IsConfigured() {
+      $AppID = C('Plugins.Reddit.ClientID');
+      $Secret = C('Plugins.Reddit.Secret');
+      if (!$AppID || !$Secret)
+         return FALSE;
+      return TRUE;
+   }
+   
+   public function SocialSignIn() {
+      return C('Plugins.Reddit.SocialSignIn', TRUE) && $this->IsConfigured();
+   }
+   
+
+   
    public function Setup() {
-      // Make sure the user has curl.
-      if (!function_exists('curl_exec')) {
-         throw new Gdn_UserException('This plugin requires curl.');
-      }
+      $Error = '';
+      if (!function_exists('curl_init'))
+         $Error = ConcatSep("\n", $Error, 'This plugin requires curl.');
+      if ($Error)
+         throw new Gdn_UserException($Error, 400);
 
-      // Save the Reddit provider type.
-      Gdn::SQL()->Replace('UserAuthenticationProvider',
-         array('AuthenticationSchemeAlias' => 'Reddit', 'URL' => '...', 'AssociationSecret' => '...', 'AssociationHashMethod' => '...'),
-         array('AuthenticationKey' => self::ProviderKey));
+      $this->Structure();
    }
-}
 
+   public function Structure() {
+      // Save the reddit provider type.
+      Gdn::SQL()->Replace('UserAuthenticationProvider',
+         array('AuthenticationSchemeAlias' => 'reddit', 'URL' => '...', 'AssociationSecret' => '...', 'AssociationHashMethod' => '...'),
+         array('AuthenticationKey' => self::ProviderKey), TRUE);
+   }
+
+   public function OnDisable() {
+   }
+
+}
