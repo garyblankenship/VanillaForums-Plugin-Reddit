@@ -80,8 +80,8 @@ echo $this->Form->Errors();
       <ol>
          <li>You must register Vanilla with Reddit at: <a href="https://ssl.reddit.com/prefs/apps">https://ssl.reddit.com/prefs/apps</a></li>
          <li>Set the <strong>Callback URL</strong> by appending &ldquo;entry/connect/reddit&rdquo; to the end of your forum&rsquo;s URL. 
-         (If your forum is at example.com/forum, your Callback URL would be http://example.com/forum/entry/rdauthorize).</li>
-         <li>After registering, copy the "Consumer Key" and "Consumer Secret" into the form on this page and click Save.</li>
+         (If your forum is at example.com/forum, your Callback URL would be http://example.com/forum/entry/reddit).</li>
+         <li>After registering, copy the "Client ID" and "Secret ID" into the form on this page and click Save.</li>
       </ol>
       <p><?php echo Anchor(Img('/plugins/Reddit/design/help-consumervalues-sm.png', array('style' => 'max-width: 763px;')), '/plugins/Reddit/design/help-consumervalues-sm.png', array('target' => '_blank')); ?></p>
    </div>
