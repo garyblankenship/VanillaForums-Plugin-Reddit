@@ -332,13 +332,26 @@ class RedditPlugin extends Gdn_Plugin {
    }
    
    public function PluginController_Reddit_Create($Sender, $Args) {
+      $RequestMethod = strtolower($Sender->RequestArgs[0]);
+      $RequestArg = strtolower($Sender->RequestArgs[1]);
+      
       // Handle error requests.
-      if(strtolower($Sender->RequestArgs[0]) == "error") {
+      if($RequestMethod == "error") {
          // Email not verified error.
-         if(strtolower($Sender->RequestArgs[1]) == "email_not_verified") {
-            $Title = T('Reddit.Error.Authentication.Title', "Authentication Error");
+         if($RequestArg == "invalid_grant") {
+            $Title = T('Reddit.Error.InvalidGrant.Title', "Reddit Authentication Error");
+            $Exception = T('Reddit.Error.InvalidGrant.Exception', "You must reconnect your Reddit acount and allow Reddit to share basic information about your profile.");
+         } elseif($RequestArg == "email_not_verified") {
+            $Title = T('Reddit.Error.Authentication.Title', "Reddit Authentication Error");
             $Exception = T('Reddit.Error.Authentication.Exception', "You must verify your Reddit account's email address first.");
+         } elseif($RequestArg == "unknown_error") {
+            $Title = T('Reddit.Error.UnknownError.Title', "Reddit Unknown Error");
+            $Exception = T('Reddit.Error.UnknownError.Exception', "There is an unknown error with the Reddit Connect Plugin. Please contact the developers.");
+         }
+         
+         if($RequestArg != "") {
             $this->RenderBasicError($Sender, $Title, $Exception);
+            return NULL;
          }
       }
       
@@ -383,9 +396,12 @@ class RedditPlugin extends Gdn_Plugin {
       
       $Tokens = json_decode($Contents, TRUE);
       
-      if(GetValue('error', $Tokens))
-         throw new Gdn_UserException('Reddit returned the following error: ' . GetValueR('error.message', $Tokens, 'Unknown error.'), 400);
-
+      $ErrorMsg = GetValue('error', $Tokens);
+      if($ErrorMsg == "invalid_grant")
+         Redirect('/plugin/reddit/error/invalid_grant');
+      elseif($ErrorMsg != "")
+         Redirect('/plugin/reddit/error/unknown_error');
+      
       $AccessToken = GetValue('access_token', $Tokens);
       
       return $AccessToken;
