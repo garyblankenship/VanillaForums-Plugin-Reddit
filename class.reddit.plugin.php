@@ -254,25 +254,32 @@ class RedditPlugin extends Gdn_Plugin {
       if(GetValue(0, $Args) != 'reddit')
          return;
 
-      if(isset($_GET['error']))
+      if(isset($_GET['error'])) {
+         // If the user denied the permission request at Reddit,
+         // then redirect to the home page.
+         if($_GET['error'] == "access_denied")
+            Redirect('/');
+         
          throw new Gdn_UserException(GetValue('error_description', $_GET, T('There was an error connecting to Reddit.')));
+      }
 
       $AppID = C('Plugins.Reddit.ClientID');
       $Secret = C('Plugins.Reddit.Secret');
       $Code = GetValue('code', $_GET);
 
       $AccessToken = $Sender->Form->GetFormValue('AccessToken');
-
+      
       // Get the access token.
       if(!$AccessToken && $Code) {
          // Exchange the token for an access token.
          $Code = urlencode($Code);
 
+         $RedirectUri = $this->RedirectUri();
          $AccessToken = $this->GetAccessToken($Code, $RedirectUri);
-
+         
          $NewToken = TRUE;
       }
-
+      
       // Get the profile.
       try {
          $Profile = $this->GetProfile($AccessToken);
@@ -290,14 +297,14 @@ class RedditPlugin extends Gdn_Plugin {
             $Sender->Form->AddError('There was an error with the Reddit connection.');
          }
       }
-
+      
       $Form = $Sender->Form; //new Gdn_Form();
       $ID = GetValue('id', $Profile);
       $Form->SetFormValue('UniqueID', $ID);
       $Form->SetFormValue('Provider', self::ProviderKey);
       $Form->SetFormValue('ProviderName', 'Reddit');
       $Form->SetFormValue('FullName', GetValue('name', $Profile));
-      $Form->SetFormValue('Email', GetValue('email', $Profile));
+      // Email is not returned by Reddit API: $Form->SetFormValue('Email', GetValue('email', $Profile));
       $Form->AddHidden('AccessToken', $AccessToken);
 
       if(C('Plugins.Reddit.UseRedditNames')) {
@@ -321,45 +328,58 @@ class RedditPlugin extends Gdn_Plugin {
    }
 
    protected function GetAccessToken($Code, $RedirectUri, $ThrowError = TRUE) {
-      $Get = array(
-          'client_id' => C('Plugins.Reddit.ClientID'),
-          'client_secret' => C('Plugins.Reddit.Secret'),
-          'code' => $Code,
-          'redirect_uri' => $RedirectUri);
-
-      $Url = 'https://ssl.reddit.com/api/v1/access_token?' . http_build_query($Get);
-
+      $Post = array(
+               'client_id' => C('Plugins.Reddit.ClientID'),
+               'client_secret' => C('Plugins.Reddit.Secret'),
+               'grant_type' => 'authorization_code',
+               'code' => $Code,
+               'redirect_uri' => $RedirectUri
+           );
+      
       // Get the redirect URI.
-      $C = curl_init();
-      curl_setopt($C, CURLOPT_RETURNTRANSFER, TRUE);
-      curl_setopt($C, CURLOPT_SSL_VERIFYPEER, FALSE);
-      curl_setopt($C, CURLOPT_URL, $Url);
-      $Contents = curl_exec($C);
-
-      $Info = curl_getinfo($C);
-      if(strpos(GetValue('content_type', $Info, ''), '/javascript') !== FALSE) {
-         $Tokens = json_decode($Contents, TRUE);
-      } else {
-         parse_str($Contents, $Tokens);
-      }
-
+      $Url = 'https://ssl.reddit.com/api/v1/access_token';
+      $Curl = curl_init();
+      curl_setopt($Curl, CURLOPT_RETURNTRANSFER, TRUE);
+      curl_setopt($Curl, CURLOPT_SSL_VERIFYPEER, FALSE);
+      curl_setopt($Curl, CURLOPT_USERPWD, $Post['client_id'] . ':' . $Post['client_secret']);
+      curl_setopt($Curl, CURLOPT_POST, TRUE);
+      curl_setopt($Curl, CURLOPT_POSTFIELDS, $Post);
+      curl_setopt($Curl, CURLOPT_URL, $Url);
+      $Contents = curl_exec($Curl);
+      $Info = curl_getinfo($Curl);
+      curl_close($Curl);
+      
+      $Tokens = json_decode($Contents, TRUE);
+      
       if(GetValue('error', $Tokens))
          throw new Gdn_UserException('Reddit returned the following error: ' . GetValueR('error.message', $Tokens, 'Unknown error.'), 400);
 
       $AccessToken = GetValue('access_token', $Tokens);
-
+      
       return $AccessToken;
    }
 
    public function GetProfile($AccessToken) {
-      $Url = "https://oauth.reddit.com/api/v1/me.json";
-      $Contents = file_get_contents($Url);
-      $Profile = json_decode($Contents, TRUE);
+      $Url = "https://oauth.reddit.com/api/v1/me";
+      $Header = array('Authorization: Bearer ' . $AccessToken);
       
+      $Curl = curl_init();
+      curl_setopt($Curl, CURLOPT_URL, $Url);
+      curl_setopt($Curl, CURLOPT_RETURNTRANSFER, TRUE);
+      curl_setopt($Curl, CURLOPT_SSL_VERIFYPEER, FALSE);
+      curl_setopt($Curl, CURLOPT_POST, FALSE);
+      curl_setopt($Curl, CURLOPT_CUSTOMREQUEST, 'GET');
+      curl_setopt($Curl, CURLOPT_HTTPHEADER, $Header);
+      $Contents = curl_exec($Curl);
+      // Debug Purposes: $Errors = curl_error($Curl); var_dump($Errors);
+      curl_close($Curl);
+      
+      $Profile = json_decode($Contents, TRUE);
       return $Profile;
    }
 
    public function AuthorizeUri($Query = FALSE, $RedirectUri = FALSE) {
+      $RandomState = md5(uniqid(rand(), true));
       $AppID = C('Plugins.Reddit.ClientID');
       $RDScope = C('Plugins.Reddit.Scope', Array('identity', 'authorization_code'));
 
@@ -367,10 +387,20 @@ class RedditPlugin extends Gdn_Plugin {
          $RedirectUri = $this->RedirectUri();
       if($Query)
          $RedirectUri .= '&' . $Query;
-      $RedirectUri = urlencode($RedirectUri);
 
       $Scopes = implode(',', $RDScope);
-      $SigninHref = "https://ssl.reddit.com/api/v1/authorize?client_id=$AppID&redirect_uri=$RedirectUri";
+      
+      $MainGet = array(
+            "duration" => "permanent", // 'temporary' or 'permanent'
+            "response_type" => "code",
+            "scope" => "identity",
+            "state" => $RandomState,
+            "client_id" => $AppID,
+            "redirect_uri" => $RedirectUri
+         );
+      
+      $SigninHref = "https://ssl.reddit.com/api/v1/authorize?" . http_build_query($MainGet);
+      
       if($Query)
          $SigninHref .= '&' . $Query;
       
