@@ -381,19 +381,16 @@ class RedditPlugin extends Gdn_Plugin {
    public function AuthorizeUri($Query = FALSE, $RedirectUri = FALSE) {
       $RandomState = md5(uniqid(rand(), true));
       $AppID = C('Plugins.Reddit.ClientID');
-      $RDScope = C('Plugins.Reddit.Scope', Array('identity', 'authorization_code'));
 
       if(!$RedirectUri)
          $RedirectUri = $this->RedirectUri();
       if($Query)
          $RedirectUri .= '&' . $Query;
-
-      $Scopes = implode(',', $RDScope);
       
       $MainGet = array(
             "duration" => "permanent", // 'temporary' or 'permanent'
             "response_type" => "code",
-            "scope" => $Scopes,
+            "scope" => "identity",
             "state" => $RandomState,
             "client_id" => $AppID,
             "redirect_uri" => $RedirectUri
