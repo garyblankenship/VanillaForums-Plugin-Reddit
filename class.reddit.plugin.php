@@ -1,7 +1,4 @@
-<?php
-
-if(!defined('APPLICATION'))
-   exit();
+<?php if(!defined('APPLICATION')) exit();
 /*
   Copyright 2013 Vanilla Forums Inc.
   This file is part of Garden.
@@ -37,7 +34,6 @@ $PluginInfo['Reddit'] = array(
 require_once PATH_LIBRARY . '/vendors/oauth/OAuth.php';
 
 class RedditPlugin extends Gdn_Plugin {
-
    const ProviderKey = 'Reddit';
 
    protected $_AccessToken = NULL;
@@ -136,7 +132,6 @@ class RedditPlugin extends Gdn_Plugin {
     * Add 'Reddit' option to the row.
     */
    public function Base_DiscussionFormOptions_Handler($Sender, $Args) {
-
       if(!$this->AccessToken())
          return;
 
@@ -161,9 +156,6 @@ class RedditPlugin extends Gdn_Plugin {
       if(!$this->SocialSignIn())
          return;
 
-      // if (!IsMobile())
-      // 	return;
-
       if(!Gdn::Session()->IsValid())
          echo "\n" . Wrap($this->_GetButton(), 'li', array('class' => 'Connect RedditConnect'));
    }
@@ -176,9 +168,7 @@ class RedditPlugin extends Gdn_Plugin {
           'Name' => 'Reddit',
           'ProviderKey' => self::ProviderKey,
           'ConnectUrl' => $this->AuthorizeUri(FALSE, self::ProfileConnectUrl()),
-          'Profile' => array(
-              'Name' => GetValue('name', $Profile)
-          )
+          'Profile' => array('Name' => GetValue('name', $Profile))
       );
    }
 
@@ -226,6 +216,7 @@ class RedditPlugin extends Gdn_Plugin {
       $ImgSrc = Asset($this->GetPluginFolder(FALSE) . '/design/reddit-icon.png');
       $ImgAlt = T('Sign In with Reddit');
       $SigninHref = $this->AuthorizeUri();
+      
       return "<a id=\"RedditAuth\" href=\"$SigninHref\" rel=\"nofollow\"><img src=\"$ImgSrc\" alt=\"$ImgAlt\" align=\"bottom\" /></a>";
    }
 
@@ -352,12 +343,10 @@ class RedditPlugin extends Gdn_Plugin {
          parse_str($Contents, $Tokens);
       }
 
-      if(GetValue('error', $Tokens)) {
+      if(GetValue('error', $Tokens))
          throw new Gdn_UserException('Reddit returned the following error: ' . GetValueR('error.message', $Tokens, 'Unknown error.'), 400);
-      }
 
       $AccessToken = GetValue('access_token', $Tokens);
-
 
       return $AccessToken;
    }
@@ -366,6 +355,7 @@ class RedditPlugin extends Gdn_Plugin {
       $Url = "https://oauth.reddit.com/api/v1/me.json";
       $Contents = file_get_contents($Url);
       $Profile = json_decode($Contents, TRUE);
+      
       return $Profile;
    }
 
@@ -383,15 +373,16 @@ class RedditPlugin extends Gdn_Plugin {
       $SigninHref = "https://ssl.reddit.com/api/v1/authorize?client_id=$AppID&redirect_uri=$RedirectUri";
       if($Query)
          $SigninHref .= '&' . $Query;
+      
       return $SigninHref;
    }
 
    protected $_RedirectUri = NULL;
 
    public function RedirectUri($NewValue = NULL) {
-      if($NewValue !== NULL)
+      if($NewValue !== NULL) {
          $this->_RedirectUri = $NewValue;
-      elseif($this->_RedirectUri === NULL) {
+      } elseif($this->_RedirectUri === NULL) {
          $RedirectUri = Url('/entry/connect/reddit', TRUE);
          if(strpos($RedirectUri, '=') !== FALSE) {
             $p = strrchr($RedirectUri, '=');
@@ -415,8 +406,10 @@ class RedditPlugin extends Gdn_Plugin {
    public function IsConfigured() {
       $AppID = C('Plugins.Reddit.ClientID');
       $Secret = C('Plugins.Reddit.Secret');
+      
       if(!$AppID || !$Secret)
          return FALSE;
+      
       return TRUE;
    }
 
@@ -427,25 +420,25 @@ class RedditPlugin extends Gdn_Plugin {
    public function Setup() {
       $Error = '';
       
-      if(!function_exists('curl_init'))
+      if(!function_exists('curl_init')) {
          $Error = ConcatSep("\n", $Error, 'This plugin requires curl.');
-      if($Error)
+         
          throw new Gdn_UserException($Error, 400);
+      }
 
       $this->Structure();
    }
 
    public function Structure() {
       // Save the reddit provider type.
-      Gdn::SQL()->Replace('UserAuthenticationProvider',
-              array('AuthenticationSchemeAlias' => 'reddit',
-                     'URL' => '...',
-                     'AssociationSecret' => '...',
-                     'AssociationHashMethod' => '...'
-                  ), array('AuthenticationKey' => self::ProviderKey), TRUE);
+      Gdn::SQL()->Replace('UserAuthenticationProvider', array(
+                  'AuthenticationSchemeAlias' => 'reddit',
+                  'URL' => '...',
+                  'AssociationSecret' => '...',
+                  'AssociationHashMethod' => '...'),
+              array('AuthenticationKey' => self::ProviderKey), TRUE);
    }
 
    public function OnDisable() {
-      
    }
 }
