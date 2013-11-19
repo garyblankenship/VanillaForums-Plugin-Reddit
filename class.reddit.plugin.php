@@ -393,7 +393,7 @@ class RedditPlugin extends Gdn_Plugin {
       $MainGet = array(
             "duration" => "permanent", // 'temporary' or 'permanent'
             "response_type" => "code",
-            "scope" => "identity",
+            "scope" => $Scopes,
             "state" => $RandomState,
             "client_id" => $AppID,
             "redirect_uri" => $RedirectUri
