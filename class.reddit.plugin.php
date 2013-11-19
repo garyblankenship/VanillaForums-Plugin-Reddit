@@ -250,7 +250,7 @@ class RedditPlugin extends Gdn_Plugin {
     * @param Gdn_Controller $Sender
     * @param array $Args
     */
-   public function Base_ConnectData_Handler($Sender, $Args) {
+   public function EntryController_ConnectData_Handler($Sender, $Args) {
       if(GetValue(0, $Args) != 'reddit')
          return;
 
@@ -298,6 +298,10 @@ class RedditPlugin extends Gdn_Plugin {
          }
       }
       
+      // If user has not verified their email at Reddit, then redirect to error controller.
+      if(!GetValue('has_verified_email', $Profile))
+         redirect('/plugin/reddit/error/email_not_verified');
+      
       $Form = $Sender->Form; //new Gdn_Form();
       $ID = GetValue('id', $Profile);
       $Form->SetFormValue('UniqueID', $ID);
@@ -326,7 +330,35 @@ class RedditPlugin extends Gdn_Plugin {
 
       $Sender->SetData('Verified', TRUE);
    }
-
+   
+   public function PluginController_Reddit_Create($Sender, $Args) {
+      // Handle error requests.
+      if(strtolower($Sender->RequestArgs[0]) == "error") {
+         // Email not verified error.
+         if(strtolower($Sender->RequestArgs[1]) == "email_not_verified") {
+            $Title = T('Reddit.Error.Authentication.Title', "Authentication Error");
+            $Exception = T('Reddit.Error.Authentication.Exception', "You must verify your Reddit account's email address first.");
+            $this->RenderBasicError($Sender, $Title, $Exception);
+         }
+      }
+      
+      // We are not using this controller for anything else, so redirect home.
+      Redirect('/');
+      return NULL;
+   }
+   
+   private function RenderBasicError($Sender, $Title = 'Title', $Exception = 'Exception.') {
+         $Sender->RemoveCssFile('admin.css');
+         $Sender->AddCssFile('style.css');
+         $Sender->MasterView = 'default';
+         $Sender->CssClass = 'SplashMessage NoPanel';
+         
+         $Sender->SetData('Title', $Title);
+         $Sender->SetData('Exception', $Exception);
+         
+         $Sender->Render('/home/error', '', 'dashboard');
+   }
+   
    protected function GetAccessToken($Code, $RedirectUri, $ThrowError = TRUE) {
       $Post = array(
                'client_id' => C('Plugins.Reddit.ClientID'),
