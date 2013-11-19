@@ -300,7 +300,7 @@ class RedditPlugin extends Gdn_Plugin {
       
       // If user has not verified their email at Reddit, then redirect to error controller.
       if(!GetValue('has_verified_email', $Profile))
-         redirect('/plugin/reddit/error/email_not_verified');
+         Redirect('/plugin/reddit/error/email_not_verified');
       
       $Form = $Sender->Form; //new Gdn_Form();
       $ID = GetValue('id', $Profile);
