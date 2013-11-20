@@ -1,4 +1,5 @@
 
+
 <?php if(!defined('APPLICATION')) exit();
 /*
   Copyright 2013 Vanilla Forums Inc.
@@ -119,13 +120,15 @@ class RedditPlugin extends Gdn_Plugin {
       if(isset($Sender->Data['Methods'])) {
          $ImgSrc = Asset($this->GetPluginFolder(FALSE) . '/design/reddit-signin.png');
          $ImgAlt = T('Sign In with Reddit');
-
+         
          $SigninHref = $this->AuthorizeUri();
 
          // Add the reddit method to the controller.
-         $RdMethod = array(
+         $RDMethod = array(
              'Name' => self::ProviderKey,
              'SignInHtml' => "<a id=\"RedditAuth\" href=\"$SigninHref\" rel=\"nofollow\" ><img src=\"$ImgSrc\" alt=\"$ImgAlt\" /></a>");
+      
+         $Sender->Data['Methods'][] = $RDMethod;
       }
    }
 
@@ -334,23 +337,24 @@ class RedditPlugin extends Gdn_Plugin {
    
    public function PluginController_Reddit_Create($Sender, $Args) {
       $RequestMethod = strtolower($Sender->RequestArgs[0]);
-      $RequestArg = strtolower($Sender->RequestArgs[1]);
+      $RequestArg1 = strtolower($Sender->RequestArgs[1]);
+      $RequestArg2 = urldecode(GetValue(2, $Sender->RequestArgs, 'no error returned'));
       
       // Handle error requests.
       if($RequestMethod == "error") {
          // Email not verified error.
-         if($RequestArg == "invalid_grant") {
+         if($RequestArg1 == "invalid_grant") {
             $Title = T('Reddit.Error.InvalidGrant.Title', "Reddit Authentication Error");
             $Exception = T('Reddit.Error.InvalidGrant.Exception', "You must reconnect your Reddit acount and allow Reddit to share basic information about your profile.");
-         } elseif($RequestArg == "email_not_verified") {
+         } elseif($RequestArg1 == "email_not_verified") {
             $Title = T('Reddit.Error.Authentication.Title', "Reddit Authentication Error");
             $Exception = T('Reddit.Error.Authentication.Exception', "You must verify your Reddit account's email address first.");
-         } elseif($RequestArg == "unknown_error") {
+         } elseif($RequestArg1 == "unknown_error") {
             $Title = T('Reddit.Error.UnknownError.Title', "Reddit Unknown Error");
-            $Exception = T('Reddit.Error.UnknownError.Exception', "There is an unknown error with the Reddit Connect Plugin. Please contact the developers.");
+            $Exception = T('Reddit.Error.UnknownError.Exception', "Unknown error: (" . $RequestArg2 . "). Please contact the developers.");
          }
          
-         if($RequestArg != "") {
+         if($RequestArg1 != "") {
             $this->RenderBasicError($Sender, $Title, $Exception);
             return NULL;
          }
@@ -401,7 +405,7 @@ class RedditPlugin extends Gdn_Plugin {
       if($ErrorMsg == "invalid_grant")
          Redirect('/plugin/reddit/error/invalid_grant');
       elseif($ErrorMsg != "")
-         Redirect('/plugin/reddit/error/unknown_error');
+         Redirect('/plugin/reddit/error/unknown_error/' . urlencode($ErrorMsg));
       
       $AccessToken = GetValue('access_token', $Tokens);
       
