@@ -78,7 +78,7 @@ echo $this->Form->Errors();
    <div class="ConfigurationHelp">
       <p><strong>How to set up Reddit Connect</strong></p>
       <ol>
-         <li>You must register your Vanilla Forum with Reddit at: <a href="https://ssl.reddit.com/prefs/apps">https://ssl.reddit.com/prefs/apps</a></li>
+         <li>You must register your Vanilla Forum with Reddit at: <a href="https://ssl.reddit.com/prefs/apps" target="_blank">https://ssl.reddit.com/prefs/apps</a></li>
          <li>Set the <strong>Callback URL</strong> which would be <i><?php echo Gdn::Request()->Domain().'/'.Gdn::Request()->WebRoot().'/'; ?>entry/connect/reddit.</i></li>
          <li>After registering, copy the "Client ID" and "Secret ID" into the form on this page and click Save.</li>
       </ol>
