@@ -382,7 +382,7 @@ class RedditPlugin extends Gdn_Plugin {
            );
       
       // Get the redirect URI.
-      $Url = 'https://ssl.reddit.com/api/v1/access_token';
+      $Url = 'https://ssl.reddit.com/api/v1/access_token/';
       $Curl = curl_init();
       curl_setopt($Curl, CURLOPT_RETURNTRANSFER, TRUE);
       curl_setopt($Curl, CURLOPT_SSL_VERIFYPEER, FALSE);
@@ -408,7 +408,7 @@ class RedditPlugin extends Gdn_Plugin {
    }
 
    public function GetProfile($AccessToken) {
-      $Url = "https://oauth.reddit.com/api/v1/me";
+      $Url = "https://oauth.reddit.com/api/v1/me/";
       $Header = array('Authorization: Bearer ' . $AccessToken);
       
       $Curl = curl_init();
@@ -423,6 +423,7 @@ class RedditPlugin extends Gdn_Plugin {
       curl_close($Curl);
       
       $Profile = json_decode($Contents, TRUE);
+      
       return $Profile;
    }
 
