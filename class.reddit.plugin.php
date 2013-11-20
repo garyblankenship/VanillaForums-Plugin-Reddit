@@ -257,8 +257,7 @@ class RedditPlugin extends Gdn_Plugin {
          return;
 
       if(isset($_GET['error'])) {
-         // If the user denied the permission request at Reddit,
-         // then redirect to the home page.
+         // If the user denied permission access at Reddit, then redirect to front.
          if($_GET['error'] == "access_denied")
             Redirect('/');
          
