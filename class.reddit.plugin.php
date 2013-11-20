@@ -119,13 +119,15 @@ class RedditPlugin extends Gdn_Plugin {
       if(isset($Sender->Data['Methods'])) {
          $ImgSrc = Asset($this->GetPluginFolder(FALSE) . '/design/reddit-signin.png');
          $ImgAlt = T('Sign In with Reddit');
-
+         
          $SigninHref = $this->AuthorizeUri();
 
          // Add the reddit method to the controller.
-         $FbMethod = array(
+         $RDMethod = array(
              'Name' => self::ProviderKey,
              'SignInHtml' => "<a id=\"RedditAuth\" href=\"$SigninHref\" rel=\"nofollow\" ><img src=\"$ImgSrc\" alt=\"$ImgAlt\" /></a>");
+      
+         $Sender->Data['Methods'][] = $RDMethod;
       }
    }
 
