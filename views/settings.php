@@ -1,45 +1,46 @@
-<?php if(!defined('APPLICATION')) exit(); ?>
+<?php if (!defined('APPLICATION')) exit();
+?>
 <style type="text/css">
-   .Configuration {
-      margin: 0 20px 20px;
-      background: #f5f5f5;
-      float: left;
-   }
-   .ConfigurationForm {
-      padding: 20px;
-      float: left;
-   }
-   #Content form .ConfigurationForm ul {
-      padding: 0;
-   }
-   #Content form .ConfigurationForm input.Button {
-      margin: 0;
-   }
-   .ConfigurationHelp {
-      border-left: 1px solid #aaa;
-      margin-left: 340px;
-      padding: 20px;
-   }
-   .ConfigurationHelp img {
-      width: 99%;
-   }
-   .ConfigurationHelp a img {
-      border: 1px solid #aaa;
-   }
-   .ConfigurationHelp a:hover img {
-      border: 1px solid #777;
-   }
-   .ConfigurationHelp ol {
-      list-style-type: decimal;
-      padding-left: 20px;
-   }
-   input.CopyInput {
-      font-family: monospace;
-      color: #000;
-      width: 240px;
-      font-size: 12px;
-      padding: 4px 3px;
-   }
+.Configuration {
+   margin: 0 20px 20px;
+   background: #f5f5f5;
+   float: left;
+}
+.ConfigurationForm {
+   padding: 20px;
+   float: left;
+}
+#Content form .ConfigurationForm ul {
+   padding: 0;
+}
+#Content form .ConfigurationForm input.Button {
+   margin: 0;
+}
+.ConfigurationHelp {
+   border-left: 1px solid #aaa;
+   margin-left: 340px;
+   padding: 20px;
+}
+.ConfigurationHelp img {
+   width: 99%;
+}
+.ConfigurationHelp a img {
+    border: 1px solid #aaa;
+}
+.ConfigurationHelp a:hover img {
+    border: 1px solid #777;
+}
+.ConfigurationHelp ol {
+    list-style-type: decimal;
+    padding-left: 20px;
+}
+input.CopyInput {
+   font-family: monospace;
+   color: #000;
+   width: 240px;
+   font-size: 12px;
+   padding: 4px 3px;
+}
 </style>
 <h1><?php echo $this->Data('Title'); ?></h1>
 <?php
@@ -54,19 +55,23 @@ echo $this->Form->Errors();
       <ul>
          <li>
             <?php
-            echo $this->Form->Label('Client ID', 'ClientID');
-            echo $this->Form->TextBox('ClientID');
+               echo $this->Form->Label('Client ID', 'ClientID');
+               echo $this->Form->TextBox('ClientID');
             ?>
          </li>
          <li>
             <?php
-            echo $this->Form->Label('Client Secret', 'Secret');
-            echo $this->Form->TextBox('Secret');
+               echo $this->Form->Label('Client Secret', 'Secret');
+               echo $this->Form->TextBox('Secret');
             ?>
          </li>
-         <li>
-            <?php echo $this->Form->CheckBox('SocialSignIn', 'Enable Social Sign In'); ?>
+         
+		  <li>
+            <?php
+               echo $this->Form->CheckBox('SocialSignIn', 'Enable Social Sign In');
+            ?>
          </li>
+		 
       </ul>
       <?php echo $this->Form->Button('Save', array('class' => 'Button SliceSubmit')); ?>
    </div>
@@ -75,11 +80,12 @@ echo $this->Form->Errors();
       <ol>
          <li>You must register your Vanilla Forum with Reddit at: <a href="https://ssl.reddit.com/prefs/apps">https://ssl.reddit.com/prefs/apps</a></li>
          <li>Set the <strong>Callback URL</strong> by appending &ldquo;/forum/entry/connect/reddit&rdquo; to the end of your forum&rsquo;s URL. 
-            (If your forum is at example.com/forum, your Callback URL would be http://example.com/forum/entry/connect/reddit).</li>
+         (If your forum is at <?php echo rtrim(Gdn::Request()->Domain(), '/').'/'; ?>, your Callback URL would be <?php echo rtrim(Gdn::Request()->Domain(), '/').'/'; ?>entry/connect/reddit).</li>
          <li>After registering, copy the "Client ID" and "Secret ID" into the form on this page and click Save.</li>
       </ol>
       <p><?php echo Anchor(Img('/plugins/Reddit/design/help-consumervalues-sm.png', array('style' => 'max-width: 763px;')), '/plugins/Reddit/design/help-consumervalues-sm.png', array('target' => '_blank')); ?></p>
    </div>
+  
 </div>   
 <?php
-echo $this->Form->Close();
+   echo $this->Form->Close();

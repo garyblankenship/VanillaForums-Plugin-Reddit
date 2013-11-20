@@ -1,3 +1,4 @@
+
 <?php if(!defined('APPLICATION')) exit();
 /*
   Copyright 2013 Vanilla Forums Inc.
