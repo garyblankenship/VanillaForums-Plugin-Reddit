@@ -80,7 +80,7 @@ echo $this->Form->Errors();
       <ol>
          <li>You must register your Vanilla Forum with Reddit at: <a href="https://ssl.reddit.com/prefs/apps">https://ssl.reddit.com/prefs/apps</a></li>
          <li>Set the <strong>Callback URL</strong> by appending &ldquo;/forum/entry/connect/reddit&rdquo; to the end of your forum&rsquo;s URL. 
-         (If your forum is at <?php echo rtrim(Gdn::Request()->Domain(), '/').'/'; ?>, your Callback URL would be <?php echo rtrim(Gdn::Request()->Domain(), '/').'/'; ?>entry/connect/reddit).</li>
+         (If your forum is at <?php echo Gdn::Request()->Domain().'/'.Gdn::Request()->WebRoot().'/'; ?>, your Callback URL would be <?php echo Gdn::Request()->Domain().'/'.Gdn::Request()->WebRoot().'/'; ?>entry/connect/reddit).</li>
          <li>After registering, copy the "Client ID" and "Secret ID" into the form on this page and click Save.</li>
       </ol>
       <p><?php echo Anchor(Img('/plugins/Reddit/design/help-consumervalues-sm.png', array('style' => 'max-width: 763px;')), '/plugins/Reddit/design/help-consumervalues-sm.png', array('target' => '_blank')); ?></p>
