@@ -123,7 +123,7 @@ class RedditPlugin extends Gdn_Plugin {
          $SigninHref = $this->AuthorizeUri();
 
          // Add the reddit method to the controller.
-         $FbMethod = array(
+         $RdMethod = array(
              'Name' => self::ProviderKey,
              'SignInHtml' => "<a id=\"RedditAuth\" href=\"$SigninHref\" rel=\"nofollow\" ><img src=\"$ImgSrc\" alt=\"$ImgAlt\" /></a>");
       }
