@@ -1,3 +1,4 @@
+
 <?php if(!defined('APPLICATION')) exit();
 /*
   Copyright 2013 Vanilla Forums Inc.
@@ -13,7 +14,7 @@ $PluginInfo['Reddit'] = array(
     'Name' => 'Reddit Social Connect',
     'Description' => 'Users may sign into your site using their Reddit account.',
     'Version' => '0.0.1',
-    'RequiredApplications' => array('Vanilla' => '2.1'),
+    'RequiredApplications' => array('Vanilla' => '2.1b2'),
     'RequiredTheme' => FALSE,
     'RequiredPlugins' => FALSE,
     'MobileFriendly' => TRUE,
