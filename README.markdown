@@ -9,7 +9,7 @@ https://github.com/reddit/reddit/wiki/OAuth2
 
 ##Installation##
 
-1.Download
+1. Download
 2. Rename folder to "Reddit"
 3. Upload Vanilla Plugin folder
 4. Enable Plugin
