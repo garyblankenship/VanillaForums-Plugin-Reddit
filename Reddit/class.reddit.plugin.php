@@ -335,23 +335,25 @@ class RedditPlugin extends Gdn_Plugin {
       $RequestArg2 = urldecode(GetValue(2, $Sender->RequestArgs, 'no error returned'));
       
       // Handle error requests.
-      if($RequestMethod == "error") {
+      if(($RequestMethod == "error") && ($RequestArg1 != "")) {
          // Email not verified error.
-         if($RequestArg1 == "invalid_grant") {
-            $Title = T('Reddit.Error.InvalidGrant.Title', "Reddit Authentication Error");
-            $Exception = T('Reddit.Error.InvalidGrant.Exception', "You must reconnect your Reddit acount and allow Reddit to share basic information about your profile.");
-         } elseif($RequestArg1 == "email_not_verified") {
-            $Title = T('Reddit.Error.Authentication.Title', "Reddit Authentication Error");
-            $Exception = T('Reddit.Error.Authentication.Exception', "You must verify your Reddit account's email address first.");
-         } elseif($RequestArg1 == "unknown_error") {
-            $Title = T('Reddit.Error.UnknownError.Title', "Reddit Unknown Error");
-            $Exception = T('Reddit.Error.UnknownError.Exception', "Unknown error: (" . $RequestArg2 . "). Please contact the developers.");
+         switch($RequestArg1) {
+            case "invalid_grant":
+               $Title = T('Reddit.Error.InvalidGrant.Title', "Reddit Authentication Error");
+               $Exception = T('Reddit.Error.InvalidGrant.Exception', "You must reconnect your Reddit acount and allow Reddit to share basic information about your profile.");
+               break;
+            case "email_not_verified":
+               $Title = T('Reddit.Error.Authentication.Title', "Reddit Authentication Error");
+               $Exception = T('Reddit.Error.Authentication.Exception', "You must verify your Reddit account's email address first.");
+               break;
+            case "unknown_error":
+               $Title = T('Reddit.Error.UnknownError.Title', "Reddit Unknown Error");
+               $Exception = T('Reddit.Error.UnknownError.Exception', "Unknown error: (" . $RequestArg2 . "). Please contact the developers.");
+               break;
          }
          
-         if($RequestArg1 != "") {
-            $this->RenderBasicError($Sender, $Title, $Exception);
-            return NULL;
-         }
+         $this->RenderBasicError($Sender, $Title, $Exception);
+         return NULL;
       }
       
       // We are not using this controller for anything else, so redirect home.
