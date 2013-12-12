@@ -101,30 +101,28 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * @return bool|string
+     * @return bool
      */
-    public function AccessToken() {
-        if (!$this->IsConfigured()) {
+    public function IsConfigured() {
+        $AppID  = C('Plugins.Reddit.ClientID');
+        $Secret = C('Plugins.Reddit.Secret');
+
+        if (!$AppID || !$Secret) {
             return false;
         }
 
-        if ($this->_AccessToken === null) {
-            if (Gdn::Session()->IsValid()) {
-                $this->_AccessToken = GetValueR(self::ProviderKey . '.AccessToken', Gdn::Session()->User->Attributes);
-            } else {
-                $this->_AccessToken = false;
-            }
-        }
-
-        return $this->_AccessToken;
+        return true;
     }
 
     /**
-     * @param bool $Query
+     * @return bool
      */
-    public function Authorize($Query = false) {
-        $Uri = $this->AuthorizeUri($Query);
-        Redirect($Uri);
+    public function SocialSignIn() {
+        return C('Plugins.Reddit.SocialSignIn', true) && $this->IsConfigured();
+    }
+
+    public function SocialSharing() {
+        return C('Plugins.Reddit.SocialSharing', TRUE) && $this->IsConfigured();
     }
 
     /**
@@ -186,94 +184,31 @@ class RedditPlugin extends Gdn_Plugin {
         return $Result;
     }
 
-    private function _GetButton() {
-        $ImgSrc     = Asset($this->GetPluginFolder(false) . '/design/reddit-icon.png');
-        $ImgAlt     = T('Sign In with Reddit');
-        $SigninHref = $this->AuthorizeUri();
-
-        return '<a id="RedditAuth" href="'.$SigninHref.'" rel="nofollow"><img src="'.$ImgSrc.'" alt="'.$ImgAlt.'" align="bottom"></a>';
+    /**
+     * @param bool $Query
+     */
+    public function Authorize($Query = false) {
+        $Uri = $this->AuthorizeUri($Query);
+        Redirect($Uri);
     }
 
     /**
-     * @param object $Sender
-     * @param string $Title
-     * @param string $Exception
+     * @return bool|string
      */
-    private function RenderBasicError($Sender, $Title = 'Title', $Exception = 'Exception.') {
-        $Sender->RemoveCssFile('admin.css');
-        $Sender->AddCssFile('style.css');
-        $Sender->MasterView = 'default';
-        $Sender->CssClass   = 'SplashMessage NoPanel';
-
-        $Sender->SetData('Title', $Title);
-        $Sender->SetData('Exception', $Exception);
-
-        $Sender->Render('/home/error', '', 'dashboard');
-    }
-
-    /**
-     * @param  int|string $Code
-     * @param  string     $RedirectUri
-     * @return mixed
-     */
-    protected function GetAccessToken($Code, $RedirectUri) {
-        $Post = array(
-            'client_id'     => C('Plugins.Reddit.ClientID'),
-            'client_secret' => C('Plugins.Reddit.Secret'),
-            'grant_type'    => 'authorization_code',
-            'code'          => $Code,
-            'redirect_uri'  => $RedirectUri
-        );
-
-        // Get the redirect URI.
-        $Url  = 'https://ssl.reddit.com/api/v1/access_token/';
-        $Curl = curl_init();
-        curl_setopt($Curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($Curl, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($Curl, CURLOPT_USERPWD, $Post['client_id'] . ':' . $Post['client_secret']);
-        curl_setopt($Curl, CURLOPT_POST, true);
-        curl_setopt($Curl, CURLOPT_POSTFIELDS, $Post);
-        curl_setopt($Curl, CURLOPT_URL, $Url);
-        $Contents = curl_exec($Curl);
-        $Info     = curl_getinfo($Curl);
-        curl_close($Curl);
-
-        $Tokens   = json_decode($Contents, true);
-        $ErrorMsg = GetValue('error', $Tokens);
-
-        if ($ErrorMsg == 'invalid_grant') {
-            Redirect('/plugin/reddit/error/invalid_grant');
-        } else if ($ErrorMsg != '') {
-            Redirect('/plugin/reddit/error/unknown_error/' . urlencode($ErrorMsg));
+    public function AccessToken() {
+        if (!$this->IsConfigured()) {
+            return false;
         }
 
-        $AccessToken = GetValue('access_token', $Tokens);
+        if ($this->_AccessToken === null) {
+            if (Gdn::Session()->IsValid()) {
+                $this->_AccessToken = GetValueR(self::ProviderKey . '.AccessToken', Gdn::Session()->User->Attributes);
+            } else {
+                $this->_AccessToken = false;
+            }
+        }
 
-        return $AccessToken;
-    }
-
-    /**
-     * @param  string $AccessToken
-     * @return mixed
-     */
-    public function GetProfile($AccessToken) {
-        $Url    = 'https://oauth.reddit.com/api/v1/me/';
-        $Header = array('Authorization: Bearer ' . $AccessToken);
-
-        $Curl = curl_init();
-        curl_setopt($Curl, CURLOPT_URL, $Url);
-        curl_setopt($Curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($Curl, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($Curl, CURLOPT_POST, false);
-        curl_setopt($Curl, CURLOPT_CUSTOMREQUEST, 'GET');
-        curl_setopt($Curl, CURLOPT_HTTPHEADER, $Header);
-        $Contents = curl_exec($Curl);
-        // Debug Purposes: $Errors = curl_error($Curl); var_dump($Errors);
-        curl_close($Curl);
-
-        $Profile = json_decode($Contents, true);
-
-        return $Profile;
+        return $this->_AccessToken;
     }
 
     /**
@@ -336,6 +271,30 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
+     * @param  string $AccessToken
+     * @return mixed
+     */
+    public function GetProfile($AccessToken) {
+        $Url    = 'https://oauth.reddit.com/api/v1/me/';
+        $Header = array('Authorization: Bearer ' . $AccessToken);
+
+        $Curl = curl_init();
+        curl_setopt($Curl, CURLOPT_URL, $Url);
+        curl_setopt($Curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($Curl, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($Curl, CURLOPT_POST, false);
+        curl_setopt($Curl, CURLOPT_CUSTOMREQUEST, 'GET');
+        curl_setopt($Curl, CURLOPT_HTTPHEADER, $Header);
+        $Contents = curl_exec($Curl);
+        // Debug Purposes: $Errors = curl_error($Curl); var_dump($Errors);
+        curl_close($Curl);
+
+        $Profile = json_decode($Contents, true);
+
+        return $Profile;
+    }
+
+    /**
      * @return mixed
      */
     public static function ProfileConnectUrl() {
@@ -343,66 +302,73 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * @return bool
+     * @param  int|string $Code
+     * @param  string     $RedirectUri
+     * @return mixed
      */
-    public function IsConfigured() {
-        $AppID  = C('Plugins.Reddit.ClientID');
-        $Secret = C('Plugins.Reddit.Secret');
+    protected function GetAccessToken($Code, $RedirectUri) {
+        $Post = array(
+            'client_id'     => C('Plugins.Reddit.ClientID'),
+            'client_secret' => C('Plugins.Reddit.Secret'),
+            'grant_type'    => 'authorization_code',
+            'code'          => $Code,
+            'redirect_uri'  => $RedirectUri
+        );
 
-        if (!$AppID || !$Secret) {
-            return false;
+        // Get the redirect URI.
+        $Url  = 'https://ssl.reddit.com/api/v1/access_token/';
+        $Curl = curl_init();
+        curl_setopt($Curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($Curl, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($Curl, CURLOPT_USERPWD, $Post['client_id'] . ':' . $Post['client_secret']);
+        curl_setopt($Curl, CURLOPT_POST, true);
+        curl_setopt($Curl, CURLOPT_POSTFIELDS, $Post);
+        curl_setopt($Curl, CURLOPT_URL, $Url);
+        $Contents = curl_exec($Curl);
+        $Info     = curl_getinfo($Curl);
+        curl_close($Curl);
+
+        $Tokens   = json_decode($Contents, true);
+        $ErrorMsg = GetValue('error', $Tokens);
+
+        if ($ErrorMsg == 'invalid_grant') {
+            Redirect('/plugin/reddit/error/invalid_grant');
+        } else if ($ErrorMsg != '') {
+            Redirect('/plugin/reddit/error/unknown_error/' . urlencode($ErrorMsg));
         }
 
-        return true;
+        $AccessToken = GetValue('access_token', $Tokens);
+
+        return $AccessToken;
     }
 
     /**
-     * @return bool
+     * @param object $Sender
+     * @param string $Title
+     * @param string $Exception
      */
-    public function SocialSignIn() {
-        return C('Plugins.Reddit.SocialSignIn', true) && $this->IsConfigured();
+    private function RenderBasicError($Sender, $Title = 'Title', $Exception = 'Exception.') {
+        $Sender->RemoveCssFile('admin.css');
+        $Sender->AddCssFile('style.css');
+        $Sender->MasterView = 'default';
+        $Sender->CssClass   = 'SplashMessage NoPanel';
+
+        $Sender->SetData('Title', $Title);
+        $Sender->SetData('Exception', $Exception);
+
+        $Sender->Render('/home/error', '', 'dashboard');
+    }
+
+    private function _GetButton() {
+        $ImgSrc     = Asset($this->GetPluginFolder(false) . '/design/reddit-icon.png');
+        $ImgAlt     = T('Sign In with Reddit');
+        $SigninHref = $this->AuthorizeUri();
+
+        return '<a id="RedditAuth" href="'.$SigninHref.'" rel="nofollow"><img src="'.$ImgSrc.'" alt="'.$ImgAlt.'" align="bottom"></a>';
     }
 
 
     /// Event Handlers ///
-
-    /**
-     * @param  PluginController $Sender
-     * @return null
-     */
-    public function PluginController_Reddit_Create($Sender) {
-        $RequestMethod = strtolower($Sender->RequestArgs[0]);
-        $RequestArg1   = strtolower($Sender->RequestArgs[1]);
-        $RequestArg2   = urldecode(GetValue(2, $Sender->RequestArgs, 'no error returned'));
-
-        // Handle error requests.
-        if (($RequestMethod == 'error') && ($RequestArg1 != '')) {
-            // Email not verified error.
-            switch($RequestArg1) {
-                case 'invalid_grant':
-                    $Title     = T('Reddit.Error.InvalidGrant.Title', 'Reddit Authentication Error');
-                    $Exception = T('Reddit.Error.InvalidGrant.Exception', 'You must reconnect your Reddit acount and allow Reddit to share basic information about your profile.');
-                    break;
-                case 'email_not_verified':
-                    $Title     = T('Reddit.Error.Authentication.Title', 'Reddit Authentication Error');
-                    $Exception = T('Reddit.Error.Authentication.Exception', "You must verify your Reddit account's email address first.");
-                    break;
-                case 'unknown_error':
-                    $Title     = T('Reddit.Error.UnknownError.Title', 'Reddit Unknown Error');
-                    $Exception = sprintf(T('Reddit.Error.UnknownError.Exception', 'Unknown error: (%s). Please contact the developers.'), $RequestArg2);
-                    break;
-            }
-
-            $this->RenderBasicError($Sender, $Title, $Exception);
-
-            return null;
-        }
-
-        // We are not using this controller for anything else, so redirect home.
-        Redirect('/');
-
-        return null;
-    }
 
     /**
      * Add 'Reddit' option to the row.
@@ -455,6 +421,44 @@ class RedditPlugin extends Gdn_Plugin {
             'ConnectUrl'  => $this->AuthorizeUri(false, self::ProfileConnectUrl()),
             'Profile'     => array('Name' => GetValue('name', $Profile))
         );
+    }
+
+    /**
+     * @param  PluginController $Sender
+     * @return null
+     */
+    public function PluginController_Reddit_Create($Sender) {
+        $RequestMethod = strtolower($Sender->RequestArgs[0]);
+        $RequestArg1   = strtolower($Sender->RequestArgs[1]);
+        $RequestArg2   = urldecode(GetValue(2, $Sender->RequestArgs, 'no error returned'));
+
+        // Handle error requests.
+        if (($RequestMethod == 'error') && ($RequestArg1 != '')) {
+            // Email not verified error.
+            switch($RequestArg1) {
+                case 'invalid_grant':
+                    $Title     = T('Reddit.Error.InvalidGrant.Title', 'Reddit Authentication Error');
+                    $Exception = T('Reddit.Error.InvalidGrant.Exception', 'You must reconnect your Reddit acount and allow Reddit to share basic information about your profile.');
+                    break;
+                case 'email_not_verified':
+                    $Title     = T('Reddit.Error.Authentication.Title', 'Reddit Authentication Error');
+                    $Exception = T('Reddit.Error.Authentication.Exception', "You must verify your Reddit account's email address first.");
+                    break;
+                case 'unknown_error':
+                    $Title     = T('Reddit.Error.UnknownError.Title', 'Reddit Unknown Error');
+                    $Exception = sprintf(T('Reddit.Error.UnknownError.Exception', 'Unknown error: (%s). Please contact the developers.'), $RequestArg2);
+                    break;
+            }
+
+            $this->RenderBasicError($Sender, $Title, $Exception);
+
+            return null;
+        }
+
+        // We are not using this controller for anything else, so redirect home.
+        Redirect('/');
+
+        return null;
     }
 
     /**
