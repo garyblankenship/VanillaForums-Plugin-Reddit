@@ -46,8 +46,7 @@
 <h1><?php echo $this->Data('Title'); ?></h1>
 
 <?php
-$Form = $this->Form;
-
+$Form    = $this->Form;
 $Request = Gdn::Request();
 $Domain  = $Request->Domain() ? $Request->Domain().'/' : '';
 $WebRoot = $Request->WebRoot() ? $Request->WebRoot().'/' : '';
@@ -68,6 +67,8 @@ echo $Form->Errors();
             <li><?php echo $Form->Label('Client ID', 'ClientID') . $Form->TextBox('ClientID'); ?></li>
             <li><?php echo $Form->Label('Client Secret', 'Secret') . $Form->TextBox('Secret'); ?></li>
             <li><?php echo $Form->CheckBox('SocialSignIn', 'Enable Social Sign In'); ?></li>
+            <li><?php echo $Form->CheckBox('SocialReactions', 'Enable Social Reactions'); ?></li>
+            <?php //<li><?php echo $Form->CheckBox('SocialSharing', 'Enable automatic Social Share'); ?></li> ?>
         </ul>
 
         <?php echo $Form->Button('Save', array('class' => 'Button SliceSubmit')); ?>
