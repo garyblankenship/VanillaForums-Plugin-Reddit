@@ -357,22 +357,39 @@ class RedditPlugin extends Gdn_Plugin {
      *
      * @param string HTML for the Reddit share button
      */
-    protected function AddReactButton() {
+    protected function AddReactButton($Sender, $Args) {
         if ($this->AccessToken()) {
             $CssClass = 'ReactButton Hijack';
         } else {
             $CssClass = 'ReactButton PopupWindow';
         }
 
+        $Type = $Args['Type'];
+        $Post = $Args[$Type];
+        $Url  = false;
+
+        switch ($Type) {
+            case 'Discussion':
+                $Url = $Post->Url;
+                break;
+
+            case 'Comment':
+                $ID  = $Post->CommentID;
+                $Url = '/discussion/comment/' . $ID . '/#Comment_' . $ID;
+                break;
+        }
+
         // URL for manually creating sharing buttons
-        $ShareUrl = 'http://www.reddit.com/submit?url=' . Url('', true);
+        $ShareUrl = 'http://www.reddit.com/submit?url=' . Url($Url, true);
 
         // Simple share button image
         $ShareImg = '<img src="http://www.reddit.com/static/spreddit1.gif" alt="submit to reddit" border="0">';
 
         // Interactive Reddit share button (currently in use)
-        $ShareBtn = '<script type="text/javascript" src="http://www.reddit.com/static/button/button1.js"></script>';
+        $ShareBtn  = '<script type="text/javascript">reddit_newwindow="1"; reddit_url="' . Url($Url, true) . '"</script>';
+        $ShareBtn .= '<script type="text/javascript" src="http://www.reddit.com/static/button/button1.js?url=http://vanilla/"></script>';
 
+        // Build React button
         $ReactButton  = ' ';
         $ReactButton .= Anchor(Sprite('ReactReddit', 'ReactSprite') . $ShareBtn, $ShareUrl, $CssClass);
         $ReactButton .= ' ';
@@ -425,7 +442,7 @@ class RedditPlugin extends Gdn_Plugin {
             return;
         }
 
-        echo Gdn_Theme::BulletItem('Share') . $this->AddReactButton();
+        echo Gdn_Theme::BulletItem('Share') . $this->AddReactButton($Sender, $Args);
     }
 
     /**
