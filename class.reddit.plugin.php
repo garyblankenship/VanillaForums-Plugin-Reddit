@@ -25,7 +25,7 @@ $PluginInfo['Reddit'] = array(
     'HasLocale'            => true,
     'RegisterPermissions'  => false,
     'Hidden'               => true,
-    'SocialConnect'        => true,
+    'SocialConnect'        => false,
     'RequiresRegistration' => true
 );
 
@@ -121,8 +121,18 @@ class RedditPlugin extends Gdn_Plugin {
         return C('Plugins.Reddit.SocialSignIn', true) && $this->IsConfigured();
     }
 
-    public function SocialSharing() {
-        return C('Plugins.Reddit.SocialSharing', TRUE) && $this->IsConfigured();
+    /**
+     * @return bool
+     */
+    // public function SocialSharing() {
+    //     return C('Plugins.Reddit.SocialSharing', TRUE) && $this->IsConfigured();
+    // }
+
+    /**
+     * @return bool
+     */
+    public function SocialReactions() {
+        return C('Plugins.Reddit.SocialReactions', TRUE) && $this->IsConfigured();
     }
 
     /**
@@ -343,11 +353,52 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
+     * Create the Reddit share button
+     *
+     * @param string HTML for the Reddit share button
+     */
+    protected function AddReactButton() {
+        if ($this->AccessToken()) {
+            $CssClass = 'ReactButton Hijack';
+        } else {
+            $CssClass = 'ReactButton PopupWindow';
+        }
+
+        // URL for manually creating sharing buttons
+        $ShareUrl = 'http://www.reddit.com/submit?url=' . Url('', true);
+
+        // Simple share button image
+        $ShareImg = '<img src="http://www.reddit.com/static/spreddit1.gif" alt="submit to reddit" border="0">';
+
+        // Interactive Reddit share button (currently in use)
+        $ShareBtn = '<script type="text/javascript" src="http://www.reddit.com/static/button/button1.js"></script>';
+
+        $ReactButton  = ' ';
+        $ReactButton .= Anchor(Sprite('ReactReddit', 'ReactSprite') . $ShareBtn, $ShareUrl, $CssClass);
+        $ReactButton .= ' ';
+
+        return $ReactButton;
+    }
+
+    /**
+     * Create the Reddit login button
+     *
+     * @return string HTML for the Reddit login button
+     */
+    protected function AddSigninButton() {
+        $ImgSrc     = Asset($this->GetPluginFolder(false) . '/design/reddit-icon.png');
+        $ImgAlt     = T('Sign In with Reddit');
+        $SigninHref = $this->AuthorizeUri();
+
+        return '<a id="RedditAuth" href="'.$SigninHref.'" rel="nofollow"><img src="'.$ImgSrc.'" alt="'.$ImgAlt.'" align="bottom"></a>';
+    }
+
+    /**
      * @param object $Sender
      * @param string $Title
      * @param string $Exception
      */
-    private function RenderBasicError($Sender, $Title = 'Title', $Exception = 'Exception.') {
+    protected function RenderBasicError($Sender, $Title = 'Title', $Exception = 'Exception.') {
         $Sender->RemoveCssFile('admin.css');
         $Sender->AddCssFile('style.css');
         $Sender->MasterView = 'default';
@@ -359,34 +410,47 @@ class RedditPlugin extends Gdn_Plugin {
         $Sender->Render('/home/error', '', 'dashboard');
     }
 
-    private function _GetButton() {
-        $ImgSrc     = Asset($this->GetPluginFolder(false) . '/design/reddit-icon.png');
-        $ImgAlt     = T('Sign In with Reddit');
-        $SigninHref = $this->AuthorizeUri();
-
-        return '<a id="RedditAuth" href="'.$SigninHref.'" rel="nofollow"><img src="'.$ImgSrc.'" alt="'.$ImgAlt.'" align="bottom"></a>';
-    }
-
 
     /// Event Handlers ///
+
+    public function Base_Render_Before($Sender) {
+        //var_dump($this->AddReactButton()); exit;
+    }
+
+    /**
+    * Add 'Reddit' option to the row.
+    */
+    public function Base_AfterReactions_Handler($Sender, $Args) {
+        if (!$this->SocialReactions()) {
+            return;
+        }
+
+        echo Gdn_Theme::BulletItem('Share') . $this->AddReactButton();
+    }
 
     /**
      * Add 'Reddit' option to the row.
      */
-    public function Base_DiscussionFormOptions_Handler($Sender, $Args) {
-        if (!$this->AccessToken()) {
-            return;
-        }
+    // public function Base_DiscussionFormOptions_Handler($Sender, $Args) {
+    //     if (!$this->AccessToken() || !$this->SocialSharing()) {
+    //         return;
+    //     }
 
-        $Options = & $Args['Options'];
-    }
+    //     $Options =& $Args['Options'];
+
+    //     $Options .= ' '.
+    //         Wrap($Sender->Form->CheckBox('ShareFacebook', '@' . Sprite('ReactFacebook', 'ReactSprite'), array(
+    //             'value' => '1',
+    //             'title' => sprintf(T('Share to %s.'), 'Facebook')
+    //             )), 'li'). ' ';
+    // }
 
     public function Base_SignInIcons_Handler() {
         if (!$this->SocialSignIn()) {
             return;
         }
 
-        echo "\n" . $this->_GetButton();
+        echo "\n" . $this->AddSigninButton();
     }
 
     public function Base_BeforeSignInButton_Handler() {
@@ -394,7 +458,7 @@ class RedditPlugin extends Gdn_Plugin {
             return;
         }
 
-        echo "\n" . $this->_GetButton();
+        echo "\n" . $this->AddSigninButton();
     }
 
     public function Base_BeforeSignInLink_Handler() {
@@ -403,7 +467,7 @@ class RedditPlugin extends Gdn_Plugin {
         }
 
         if (!Gdn::Session()->IsValid()) {
-            echo "\n" . Wrap($this->_GetButton(), 'li', array('class' => 'Connect RedditConnect'));
+            echo "\n" . Wrap($this->AddSigninButton(), 'li', array('class' => 'Connect RedditConnect'));
         }
     }
 
@@ -624,6 +688,8 @@ class RedditPlugin extends Gdn_Plugin {
                 'Plugins.Reddit.Secret'                => $Form->GetFormValue('Secret'),
                 'Plugins.Reddit.UseRedditNames'        => $Form->GetFormValue('UseRedditNames'),
                 'Plugins.Reddit.SocialSignIn'          => $Form->GetFormValue('SocialSignIn'),
+                'Plugins.Reddit.SocialReactions'       => $Form->GetFormValue('SocialReactions'),
+                //'Plugins.Reddit.SocialSharing'         => $Form->GetFormValue('SocialSharing'),
                 'Garden.Registration.SendConnectEmail' => $Form->GetFormValue('SendConnectEmail')
             );
 
@@ -636,6 +702,8 @@ class RedditPlugin extends Gdn_Plugin {
             $Form->SetValue('UseRedditNames', C('Plugins.Reddit.UseRedditNames'));
             $Form->SetValue('SendConnectEmail', C('Garden.Registration.SendConnectEmail', false));
             $Form->SetValue('SocialSignIn', C('Plugins.Reddit.SocialSignIn', true));
+            $Form->SetValue('SocialReactions', $this->SocialReactions());
+            //$Form->SetValue('SocialSharing', $this->SocialSharing());
         }
 
         $Sender->AddSideMenu('dashboard/social');
