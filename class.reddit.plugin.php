@@ -227,7 +227,6 @@ class RedditPlugin extends Gdn_Plugin {
      * @return string
      */
     public function AuthorizeUri($Query = false, $RedirectUri = false) {
-        $RandomState = md5(uniqid(rand(), true));
         $AppID = C('Plugins.Reddit.ClientID');
 
         if (!$RedirectUri) {
@@ -238,10 +237,10 @@ class RedditPlugin extends Gdn_Plugin {
         }
 
         $MainGet = array(
-            'duration'      => 'permanent', // 'temporary' or 'permanent'
+            'duration'      => 'temporary', // 'temporary' or 'permanent'
             'response_type' => 'code',
             'scope'         => 'identity',
-            'state'         => $RandomState,
+            'state'         => Gdn::Session()->TransientKey(),
             'client_id'     => $AppID,
             'redirect_uri'  => $RedirectUri
         );
@@ -570,15 +569,21 @@ class RedditPlugin extends Gdn_Plugin {
      * @throws Gdn_UserException
      */
     public function EntryController_ConnectData_Handler($Sender, $Args) {
-        if (GetValue(0, $Args) != 'reddit') {
-            return;
+        // Don't bother continuing is this isn't related to Reddit
+        if (GetValue(0, $Args) != 'reddit') return;
+
+        $TransientKey = GetIncomingValue('state');
+
+        // Validate the transient key we sent along when initialising the request
+        // Since this isn't a postback, we simply pair the two trasient keys and
+        // check that they match.
+        if ($TransientKey !== Gdn::Session()->TransientKey()) {
+            throw new Gdn_UserException(T('The transient key did not validate.'));
         }
 
         if ($Error = GetIncomingValue('error')) {
             // If the user denied permission access at Reddit, then redirect to front.
-            if ($Error == 'access_denied') {
-                Redirect('/');
-            }
+            if ($Error == 'access_denied') Redirect('/');
 
             throw new Gdn_UserException(GetIncomingValue('error_description', T('There was an error connecting to Reddit.')));
         }
