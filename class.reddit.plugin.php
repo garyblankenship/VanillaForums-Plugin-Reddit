@@ -574,18 +574,18 @@ class RedditPlugin extends Gdn_Plugin {
             return;
         }
 
-        if (isset($_GET['error'])) {
+        if ($Error = GetIncomingValue('error')) {
             // If the user denied permission access at Reddit, then redirect to front.
-            if ($_GET['error'] == "access_denied") {
+            if ($Error == 'access_denied') {
                 Redirect('/');
             }
 
-            throw new Gdn_UserException(GetValue('error_description', $_GET, T('There was an error connecting to Reddit.')));
+            throw new Gdn_UserException(GetIncomingValue('error_description', T('There was an error connecting to Reddit.')));
         }
 
         $AppID  = C('Plugins.Reddit.ClientID');
         $Secret = C('Plugins.Reddit.Secret');
-        $Code   = GetValue('code', $_GET);
+        $Code   = GetIncomingValue('code');
 
         $AccessToken = $Sender->Form->GetFormValue('AccessToken');
 
