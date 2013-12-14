@@ -68,7 +68,6 @@ echo $Form->Errors();
             <li><?php echo $Form->Label('Client Secret', 'Secret') . $Form->TextBox('Secret'); ?></li>
             <li><?php echo $Form->CheckBox('SocialSignIn', 'Enable Social Sign In'); ?></li>
             <li><?php echo $Form->CheckBox('SocialReactions', 'Enable Social Reactions'); ?></li>
-            <?php //<li><?php echo $Form->CheckBox('SocialSharing', 'Enable automatic Social Share'); ?></li>
         </ul>
 
         <?php echo $Form->Button('Save', array('class' => 'Button SliceSubmit')); ?>

@@ -2,7 +2,8 @@
 /**
  * Reddit Social Connect plugin
  *
- * Created with the help of the Shadowdare, hgtonight, kasper and the Vanilla Forums Community.
+ * Created with the help of the Shadowdare, hgtonight, kasper and the
+ * Vanilla Forums Community.
  *
  * @copyright Copyright (c) 2013 Adrian Speyer (http://www.adrianspeyer.com)
  * @license   http://www.gnu.org/licenses/gpl-2.0.html GPLv2
@@ -30,7 +31,7 @@ $PluginInfo['Reddit'] = array(
 );
 
 /**
- * Include core OAuth library
+ * Include Garden's core OAuth library
  *
  * @link https://github.com/reddit/reddit/wiki/OAuth2
  */
@@ -38,29 +39,37 @@ require_once PATH_LIBRARY . '/vendors/oauth/OAuth.php';
 
 /**
  * Class RedditPlugin
+ *
+ * @author Adrian Speyer (http://www.adrianspeyer.com)
+ * @author Shadowdare (http://gamebyline.com)
+ * @author Zachary Doll <Zachary.Doll@gmail.com>
+ * @author Kasper Isager <kasperisager@gmail.com>
  */
 class RedditPlugin extends Gdn_Plugin {
     /// Constants ///
 
     const ProviderKey = 'Reddit';
 
-
     /// Properties
 
     /**
-     * @var bool|null|string
+     * @access protected
+     * @var    bool|null|string
      */
     protected $_AccessToken = null;
 
     /**
-     * @var null|string
+     * @access protected
+     * @var    null|string
      */
     protected $_RedirectUri = null;
-
 
     /// Methods ///
 
     /**
+     * Code to be run upon enabling the plugin
+     *
+     * @access public
      * @throws Gdn_UserException
      */
     public function Setup() {
@@ -77,6 +86,8 @@ class RedditPlugin extends Gdn_Plugin {
 
     /**
      * Create database structure
+     *
+     * @access public
      */
     public function Structure() {
         // Save the Reddit provider type.
@@ -94,6 +105,12 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
+     * Code to be run upon disabling the plugin
+     *
+     * We simply return true in order to indicate that the plugin has been
+     * successfully disabled.
+     *
+     * @access public
      * @return bool
      */
     public function OnDisable() {
@@ -101,20 +118,24 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
+     * Has the plugin been correctly configured?
+     *
+     * @access public
      * @return bool
      */
     public function IsConfigured() {
         $AppID  = C('Plugins.Reddit.ClientID');
         $Secret = C('Plugins.Reddit.Secret');
 
-        if (!$AppID || !$Secret) {
-            return false;
-        }
+        if (!$AppID || !$Secret) return false;
 
         return true;
     }
 
     /**
+     * Check if Social Sign In is enabled and the plugin configured.
+     *
+     * @access public
      * @return bool
      */
     public function SocialSignIn() {
@@ -122,13 +143,9 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * @return bool
-     */
-    // public function SocialSharing() {
-    //     return C('Plugins.Reddit.SocialSharing', TRUE) && $this->IsConfigured();
-    // }
-
-    /**
+     * Check if Social Reactions is enabled and the plugin configured.
+     *
+     * @access public
      * @return bool
      */
     public function SocialReactions() {
@@ -136,6 +153,7 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
+     * @access public
      * @param  string $Path
      * @param  bool   $Post
      * @return mixed
@@ -195,7 +213,8 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * @param bool $Query
+     * @access public
+     * @param  bool $Query
      */
     public function Authorize($Query = false) {
         $Uri = $this->AuthorizeUri($Query);
@@ -203,6 +222,7 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
+     * @access public
      * @return bool|string
      */
     public function AccessToken() {
@@ -222,12 +242,12 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
+     * @access public
      * @param  bool $Query
      * @param  bool $RedirectUri
      * @return string
      */
     public function AuthorizeUri($Query = false, $RedirectUri = false) {
-        $RandomState = md5(uniqid(rand(), true));
         $AppID = C('Plugins.Reddit.ClientID');
 
         if (!$RedirectUri) {
@@ -238,10 +258,10 @@ class RedditPlugin extends Gdn_Plugin {
         }
 
         $MainGet = array(
-            'duration'      => 'permanent', // 'temporary' or 'permanent'
+            'duration'      => 'temporary', // 'temporary' or 'permanent'
             'response_type' => 'code',
             'scope'         => 'identity',
-            'state'         => $RandomState,
+            'state'         => Gdn::Session()->TransientKey(),
             'client_id'     => $AppID,
             'redirect_uri'  => $RedirectUri
         );
@@ -256,6 +276,7 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
+     * @access public
      * @param  null $NewValue
      * @return null|string
      */
@@ -281,6 +302,7 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
+     * @access public
      * @param  string $AccessToken
      * @return mixed
      */
@@ -305,16 +327,21 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * @return mixed
+     * Return the Profile Connect Url
+     *
+     * @access public
+     * @return string
+     * @static
      */
     public static function ProfileConnectUrl() {
         return Url(UserUrl(Gdn::Session()->User, false, 'redditconnect'), true);
     }
 
     /**
+     * @access protected
      * @param  int|string $Code
      * @param  string     $RedirectUri
-     * @return mixed
+     * @return string
      */
     protected function GetAccessToken($Code, $RedirectUri) {
         $Post = array(
@@ -355,7 +382,8 @@ class RedditPlugin extends Gdn_Plugin {
     /**
      * Create the Reddit share button
      *
-     * @param string HTML for the Reddit share button
+     * @access protected
+     * @param  string HTML for the Reddit share button
      */
     protected function AddReactButton($Args) {
         if ($this->AccessToken()) {
@@ -397,6 +425,7 @@ class RedditPlugin extends Gdn_Plugin {
     /**
      * Create the Reddit login button
      *
+     * @access protected
      * @return string HTML for the Reddit login button
      */
     protected function AddSigninButton() {
@@ -408,9 +437,10 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * @param object $Sender
-     * @param string $Title
-     * @param string $Exception
+     * @access protected
+     * @param  object $Sender
+     * @param  string $Title
+     * @param  string $Exception
      */
     protected function RenderBasicError($Sender, $Title = 'Title', $Exception = 'Exception.') {
         $Sender->RemoveCssFile('admin.css');
@@ -424,20 +454,17 @@ class RedditPlugin extends Gdn_Plugin {
         $Sender->Render('/home/error', '', 'dashboard');
     }
 
-
     /// Event Handlers ///
-
-    public function Base_Render_Before($Sender) {
-        //var_dump($this->AddReactButton()); exit;
-    }
 
     /**
     * Add 'Reddit' option to the row.
+    *
+    * @access public
+    * @param  Gdn_Controller $Sender
+    * @param  array          $Args
     */
     public function Base_AfterReactions_Handler($Sender, $Args) {
-        if (!$this->SocialReactions()) {
-            return;
-        }
+        if (!$this->SocialReactions()) return;
 
         if ($this->AddReactButton($Args)) {
             echo Gdn_Theme::BulletItem('Share') . $this->AddReactButton($Args);
@@ -445,42 +472,34 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * Add 'Reddit' option to the row.
+     * Echo out the Reddit Sign In button
+     *
+     * @access public
      */
-    // public function Base_DiscussionFormOptions_Handler($Sender, $Args) {
-    //     if (!$this->AccessToken() || !$this->SocialSharing()) {
-    //         return;
-    //     }
-
-    //     $Options =& $Args['Options'];
-
-    //     $Options .= ' '.
-    //         Wrap($Sender->Form->CheckBox('ShareFacebook', '@' . Sprite('ReactFacebook', 'ReactSprite'), array(
-    //             'value' => '1',
-    //             'title' => sprintf(T('Share to %s.'), 'Facebook')
-    //             )), 'li'). ' ';
-    // }
-
     public function Base_SignInIcons_Handler() {
-        if (!$this->SocialSignIn()) {
-            return;
-        }
+        if (!$this->SocialSignIn()) return;
 
         echo "\n" . $this->AddSigninButton();
     }
 
+    /**
+     * Echo out the Reddit Sign In button
+     *
+     * @access public
+     */
     public function Base_BeforeSignInButton_Handler() {
-        if (!$this->SocialSignIn()) {
-            return;
-        }
+        if (!$this->SocialSignIn()) return;
 
         echo "\n" . $this->AddSigninButton();
     }
 
+    /**
+     * Echo out the Reddit Sign In button
+     *
+     * @access public
+     */
     public function Base_BeforeSignInLink_Handler() {
-        if (!$this->SocialSignIn()) {
-            return;
-        }
+        if (!$this->SocialSignIn()) return;
 
         if (!Gdn::Session()->IsValid()) {
             echo "\n" . Wrap($this->AddSigninButton(), 'li', array('class' => 'Connect RedditConnect'));
@@ -488,8 +507,9 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * @param Gdn_Controller $Sender
-     * @param array $Args
+     * @access public
+     * @param  Gdn_Controller $Sender
+     * @param  array          $Args
      */
     public function Base_GetConnections_Handler($Sender, $Args) {
         $Profile = GetValueR('User.Attributes.' . self::ProviderKey . '.Profile', $Args);
@@ -504,6 +524,7 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
+     * @access public
      * @param  PluginController $Sender
      * @return null
      */
@@ -520,10 +541,12 @@ class RedditPlugin extends Gdn_Plugin {
                     $Title     = T('Reddit.Error.InvalidGrant.Title', 'Reddit Authentication Error');
                     $Exception = T('Reddit.Error.InvalidGrant.Exception', 'You must reconnect your Reddit acount and allow Reddit to share basic information about your profile.');
                     break;
+
                 case 'email_not_verified':
                     $Title     = T('Reddit.Error.Authentication.Title', 'Reddit Authentication Error');
                     $Exception = T('Reddit.Error.Authentication.Exception', "You must verify your Reddit account's email address first.");
                     break;
+
                 case 'unknown_error':
                     $Title     = T('Reddit.Error.UnknownError.Title', 'Reddit Unknown Error');
                     $Exception = sprintf(T('Reddit.Error.UnknownError.Exception', 'Unknown error: (%s). Please contact the developers.'), $RequestArg2);
@@ -542,7 +565,8 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * @param Gdn_Controller $Sender
+     * @access public
+     * @param  Gdn_Controller $Sender
      */
     public function EntryController_SignIn_Handler($Sender) {
         if (!$this->SocialSignIn()) {
@@ -565,27 +589,34 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
+     * @access public
      * @param  Gdn_Controller $Sender
-     * @param  array $Args
+     * @param  array          $Args
      * @throws Gdn_UserException
      */
     public function EntryController_ConnectData_Handler($Sender, $Args) {
-        if (GetValue(0, $Args) != 'reddit') {
-            return;
+        // Don't bother continuing is this isn't related to Reddit
+        if (GetValue(0, $Args) != 'reddit') return;
+
+        $TransientKey = GetIncomingValue('state');
+
+        // Validate the transient key we sent along when initialising the request
+        // Since this isn't a postback, we simply pair the two trasient keys and
+        // check that they match.
+        if ($TransientKey !== Gdn::Session()->TransientKey()) {
+            throw new Gdn_UserException(T('The transient key did not validate.'));
         }
 
-        if (isset($_GET['error'])) {
+        if ($Error = GetIncomingValue('error')) {
             // If the user denied permission access at Reddit, then redirect to front.
-            if ($_GET['error'] == "access_denied") {
-                Redirect('/');
-            }
+            if ($Error == 'access_denied') Redirect('/');
 
-            throw new Gdn_UserException(GetValue('error_description', $_GET, T('There was an error connecting to Reddit.')));
+            throw new Gdn_UserException(GetIncomingValue('error_description', T('There was an error connecting to Reddit.')));
         }
 
         $AppID  = C('Plugins.Reddit.ClientID');
         $Secret = C('Plugins.Reddit.Secret');
-        $Code   = GetValue('code', $_GET);
+        $Code   = GetIncomingValue('code');
 
         $AccessToken = $Sender->Form->GetFormValue('AccessToken');
 
@@ -652,10 +683,11 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * @param ProfileController $Sender
-     * @param string $UserReference
-     * @param string $Username
-     * @param bool $Code
+     * @access public
+     * @param  ProfileController $Sender
+     * @param  string            $UserReference
+     * @param  string            $Username
+     * @param  bool              $Code
      */
     public function ProfileController_RedditConnect_Create($Sender, $UserReference, $Username, $Code = false) {
         $Sender->Permission('Garden.SignIn.Allow');
@@ -691,7 +723,8 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * @param SocialController $Sender
+     * @access public
+     * @param  SocialController $Sender
      */
     public function SocialController_Reddit_Create($Sender) {
         $Sender->Permission('Garden.Settings.Manage');
@@ -705,7 +738,6 @@ class RedditPlugin extends Gdn_Plugin {
                 'Plugins.Reddit.UseRedditNames'        => $Form->GetFormValue('UseRedditNames'),
                 'Plugins.Reddit.SocialSignIn'          => $Form->GetFormValue('SocialSignIn'),
                 'Plugins.Reddit.SocialReactions'       => $Form->GetFormValue('SocialReactions'),
-                //'Plugins.Reddit.SocialSharing'         => $Form->GetFormValue('SocialSharing'),
                 'Garden.Registration.SendConnectEmail' => $Form->GetFormValue('SendConnectEmail')
             );
 
@@ -719,7 +751,6 @@ class RedditPlugin extends Gdn_Plugin {
             $Form->SetValue('SendConnectEmail', C('Garden.Registration.SendConnectEmail', false));
             $Form->SetValue('SocialSignIn', C('Plugins.Reddit.SocialSignIn', true));
             $Form->SetValue('SocialReactions', $this->SocialReactions());
-            //$Form->SetValue('SocialSharing', $this->SocialSharing());
         }
 
         $Sender->AddSideMenu('dashboard/social');
