@@ -357,27 +357,28 @@ class RedditPlugin extends Gdn_Plugin {
      *
      * @param string HTML for the Reddit share button
      */
-    protected function AddReactButton($Sender, $Args) {
+    protected function AddReactButton($Args) {
         if ($this->AccessToken()) {
             $CssClass = 'ReactButton Hijack';
         } else {
             $CssClass = 'ReactButton PopupWindow';
         }
 
-        $Type = $Args['Type'];
-        $Post = $Args[$Type];
+        $Type = $Args['RecordType'];
         $Url  = false;
 
         switch ($Type) {
-            case 'Discussion':
-                $Url = $Post->Url;
+            case 'discussion':
+                $Url = $Args['Discussion']->Url;
                 break;
 
-            case 'Comment':
-                $ID  = $Post->CommentID;
+            case 'comment':
+                $ID  = $Args['Comment']->CommentID;
                 $Url = '/discussion/comment/' . $ID . '/#Comment_' . $ID;
                 break;
         }
+
+        if (!$Url) return false;
 
         // URL for manually creating sharing buttons
         $ShareUrl = 'http://www.reddit.com/submit?url=' . Url($Url, true);
@@ -442,7 +443,9 @@ class RedditPlugin extends Gdn_Plugin {
             return;
         }
 
-        echo Gdn_Theme::BulletItem('Share') . $this->AddReactButton($Sender, $Args);
+        if ($this->AddReactButton($Args)) {
+            echo Gdn_Theme::BulletItem('Share') . $this->AddReactButton($Args);
+        }
     }
 
     /**
