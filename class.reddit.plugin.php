@@ -25,7 +25,7 @@ $PluginInfo['Reddit'] = array(
     'HasLocale'            => true,
     'RegisterPermissions'  => false,
     'Hidden'               => true,
-    'SocialConnect'        => true,
+    'SocialConnect'        => false,
     'RequiresRegistration' => true
 );
 
@@ -101,30 +101,38 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * @return bool|string
+     * @return bool
      */
-    public function AccessToken() {
-        if (!$this->IsConfigured()) {
+    public function IsConfigured() {
+        $AppID  = C('Plugins.Reddit.ClientID');
+        $Secret = C('Plugins.Reddit.Secret');
+
+        if (!$AppID || !$Secret) {
             return false;
         }
 
-        if ($this->_AccessToken === null) {
-            if (Gdn::Session()->IsValid()) {
-                $this->_AccessToken = GetValueR(self::ProviderKey . '.AccessToken', Gdn::Session()->User->Attributes);
-            } else {
-                $this->_AccessToken = false;
-            }
-        }
-
-        return $this->_AccessToken;
+        return true;
     }
 
     /**
-     * @param bool $Query
+     * @return bool
      */
-    public function Authorize($Query = false) {
-        $Uri = $this->AuthorizeUri($Query);
-        Redirect($Uri);
+    public function SocialSignIn() {
+        return C('Plugins.Reddit.SocialSignIn', true) && $this->IsConfigured();
+    }
+
+    /**
+     * @return bool
+     */
+    // public function SocialSharing() {
+    //     return C('Plugins.Reddit.SocialSharing', TRUE) && $this->IsConfigured();
+    // }
+
+    /**
+     * @return bool
+     */
+    public function SocialReactions() {
+        return C('Plugins.Reddit.SocialReactions', TRUE) && $this->IsConfigured();
     }
 
     /**
@@ -186,94 +194,31 @@ class RedditPlugin extends Gdn_Plugin {
         return $Result;
     }
 
-    private function _GetButton() {
-        $ImgSrc     = Asset($this->GetPluginFolder(false) . '/design/reddit-icon.png');
-        $ImgAlt     = T('Sign In with Reddit');
-        $SigninHref = $this->AuthorizeUri();
-
-        return '<a id="RedditAuth" href="'.$SigninHref.'" rel="nofollow"><img src="'.$ImgSrc.'" alt="'.$ImgAlt.'" align="bottom"></a>';
+    /**
+     * @param bool $Query
+     */
+    public function Authorize($Query = false) {
+        $Uri = $this->AuthorizeUri($Query);
+        Redirect($Uri);
     }
 
     /**
-     * @param object $Sender
-     * @param string $Title
-     * @param string $Exception
+     * @return bool|string
      */
-    private function RenderBasicError($Sender, $Title = 'Title', $Exception = 'Exception.') {
-        $Sender->RemoveCssFile('admin.css');
-        $Sender->AddCssFile('style.css');
-        $Sender->MasterView = 'default';
-        $Sender->CssClass   = 'SplashMessage NoPanel';
-
-        $Sender->SetData('Title', $Title);
-        $Sender->SetData('Exception', $Exception);
-
-        $Sender->Render('/home/error', '', 'dashboard');
-    }
-
-    /**
-     * @param  int|string $Code
-     * @param  string     $RedirectUri
-     * @return mixed
-     */
-    protected function GetAccessToken($Code, $RedirectUri) {
-        $Post = array(
-            'client_id'     => C('Plugins.Reddit.ClientID'),
-            'client_secret' => C('Plugins.Reddit.Secret'),
-            'grant_type'    => 'authorization_code',
-            'code'          => $Code,
-            'redirect_uri'  => $RedirectUri
-        );
-
-        // Get the redirect URI.
-        $Url  = 'https://ssl.reddit.com/api/v1/access_token/';
-        $Curl = curl_init();
-        curl_setopt($Curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($Curl, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($Curl, CURLOPT_USERPWD, $Post['client_id'] . ':' . $Post['client_secret']);
-        curl_setopt($Curl, CURLOPT_POST, true);
-        curl_setopt($Curl, CURLOPT_POSTFIELDS, $Post);
-        curl_setopt($Curl, CURLOPT_URL, $Url);
-        $Contents = curl_exec($Curl);
-        $Info     = curl_getinfo($Curl);
-        curl_close($Curl);
-
-        $Tokens   = json_decode($Contents, true);
-        $ErrorMsg = GetValue('error', $Tokens);
-
-        if ($ErrorMsg == 'invalid_grant') {
-            Redirect('/plugin/reddit/error/invalid_grant');
-        } else if ($ErrorMsg != '') {
-            Redirect('/plugin/reddit/error/unknown_error/' . urlencode($ErrorMsg));
+    public function AccessToken() {
+        if (!$this->IsConfigured()) {
+            return false;
         }
 
-        $AccessToken = GetValue('access_token', $Tokens);
+        if ($this->_AccessToken === null) {
+            if (Gdn::Session()->IsValid()) {
+                $this->_AccessToken = GetValueR(self::ProviderKey . '.AccessToken', Gdn::Session()->User->Attributes);
+            } else {
+                $this->_AccessToken = false;
+            }
+        }
 
-        return $AccessToken;
-    }
-
-    /**
-     * @param  string $AccessToken
-     * @return mixed
-     */
-    public function GetProfile($AccessToken) {
-        $Url    = 'https://oauth.reddit.com/api/v1/me/';
-        $Header = array('Authorization: Bearer ' . $AccessToken);
-
-        $Curl = curl_init();
-        curl_setopt($Curl, CURLOPT_URL, $Url);
-        curl_setopt($Curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($Curl, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($Curl, CURLOPT_POST, false);
-        curl_setopt($Curl, CURLOPT_CUSTOMREQUEST, 'GET');
-        curl_setopt($Curl, CURLOPT_HTTPHEADER, $Header);
-        $Contents = curl_exec($Curl);
-        // Debug Purposes: $Errors = curl_error($Curl); var_dump($Errors);
-        curl_close($Curl);
-
-        $Profile = json_decode($Contents, true);
-
-        return $Profile;
+        return $this->_AccessToken;
     }
 
     /**
@@ -336,6 +281,30 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
+     * @param  string $AccessToken
+     * @return mixed
+     */
+    public function GetProfile($AccessToken) {
+        $Url    = 'https://oauth.reddit.com/api/v1/me/';
+        $Header = array('Authorization: Bearer ' . $AccessToken);
+
+        $Curl = curl_init();
+        curl_setopt($Curl, CURLOPT_URL, $Url);
+        curl_setopt($Curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($Curl, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($Curl, CURLOPT_POST, false);
+        curl_setopt($Curl, CURLOPT_CUSTOMREQUEST, 'GET');
+        curl_setopt($Curl, CURLOPT_HTTPHEADER, $Header);
+        $Contents = curl_exec($Curl);
+        // Debug Purposes: $Errors = curl_error($Curl); var_dump($Errors);
+        curl_close($Curl);
+
+        $Profile = json_decode($Contents, true);
+
+        return $Profile;
+    }
+
+    /**
      * @return mixed
      */
     public static function ProfileConnectUrl() {
@@ -343,28 +312,196 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * @return bool
+     * @param  int|string $Code
+     * @param  string     $RedirectUri
+     * @return mixed
      */
-    public function IsConfigured() {
-        $AppID  = C('Plugins.Reddit.ClientID');
-        $Secret = C('Plugins.Reddit.Secret');
+    protected function GetAccessToken($Code, $RedirectUri) {
+        $Post = array(
+            'client_id'     => C('Plugins.Reddit.ClientID'),
+            'client_secret' => C('Plugins.Reddit.Secret'),
+            'grant_type'    => 'authorization_code',
+            'code'          => $Code,
+            'redirect_uri'  => $RedirectUri
+        );
 
-        if (!$AppID || !$Secret) {
-            return false;
+        // Get the redirect URI.
+        $Url  = 'https://ssl.reddit.com/api/v1/access_token/';
+        $Curl = curl_init();
+        curl_setopt($Curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($Curl, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($Curl, CURLOPT_USERPWD, $Post['client_id'] . ':' . $Post['client_secret']);
+        curl_setopt($Curl, CURLOPT_POST, true);
+        curl_setopt($Curl, CURLOPT_POSTFIELDS, $Post);
+        curl_setopt($Curl, CURLOPT_URL, $Url);
+        $Contents = curl_exec($Curl);
+        $Info     = curl_getinfo($Curl);
+        curl_close($Curl);
+
+        $Tokens   = json_decode($Contents, true);
+        $ErrorMsg = GetValue('error', $Tokens);
+
+        if ($ErrorMsg == 'invalid_grant') {
+            Redirect('/plugin/reddit/error/invalid_grant');
+        } else if ($ErrorMsg != '') {
+            Redirect('/plugin/reddit/error/unknown_error/' . urlencode($ErrorMsg));
         }
 
-        return true;
+        $AccessToken = GetValue('access_token', $Tokens);
+
+        return $AccessToken;
     }
 
     /**
-     * @return bool
+     * Create the Reddit share button
+     *
+     * @param string HTML for the Reddit share button
      */
-    public function SocialSignIn() {
-        return C('Plugins.Reddit.SocialSignIn', true) && $this->IsConfigured();
+    protected function AddReactButton($Args) {
+        if ($this->AccessToken()) {
+            $CssClass = 'ReactButton Hijack';
+        } else {
+            $CssClass = 'ReactButton PopupWindow';
+        }
+
+        $Type = $Args['RecordType'];
+        $Url  = false;
+
+        switch ($Type) {
+            case 'discussion':
+                $Url = $Args['Discussion']->Url;
+                break;
+
+            case 'comment':
+                $ID  = $Args['Comment']->CommentID;
+                $Url = '/discussion/comment/' . $ID . '/#Comment_' . $ID;
+                break;
+        }
+
+        if (!$Url) return false;
+
+        // URL for manually creating sharing buttons
+        $ShareUrl = 'http://www.reddit.com/submit?url=' . Url($Url, true);
+
+        // Simple share button image
+        $ShareImg = '<img src="http://www.reddit.com/static/spreddit1.gif" alt="submit to reddit" border="0">';
+
+        // Build React button
+        $ReactButton  = ' ';
+        $ReactButton .= Anchor(Sprite('ReactReddit', 'ReactSprite') . $ShareImg, $ShareUrl, $CssClass);
+        $ReactButton .= ' ';
+
+        return $ReactButton;
+    }
+
+    /**
+     * Create the Reddit login button
+     *
+     * @return string HTML for the Reddit login button
+     */
+    protected function AddSigninButton() {
+        $ImgSrc     = Asset($this->GetPluginFolder(false) . '/design/reddit-icon.png');
+        $ImgAlt     = T('Sign In with Reddit');
+        $SigninHref = $this->AuthorizeUri();
+
+        return '<a id="RedditAuth" href="'.$SigninHref.'" rel="nofollow"><img src="'.$ImgSrc.'" alt="'.$ImgAlt.'" align="bottom"></a>';
+    }
+
+    /**
+     * @param object $Sender
+     * @param string $Title
+     * @param string $Exception
+     */
+    protected function RenderBasicError($Sender, $Title = 'Title', $Exception = 'Exception.') {
+        $Sender->RemoveCssFile('admin.css');
+        $Sender->AddCssFile('style.css');
+        $Sender->MasterView = 'default';
+        $Sender->CssClass   = 'SplashMessage NoPanel';
+
+        $Sender->SetData('Title', $Title);
+        $Sender->SetData('Exception', $Exception);
+
+        $Sender->Render('/home/error', '', 'dashboard');
     }
 
 
     /// Event Handlers ///
+
+    public function Base_Render_Before($Sender) {
+        //var_dump($this->AddReactButton()); exit;
+    }
+
+    /**
+    * Add 'Reddit' option to the row.
+    */
+    public function Base_AfterReactions_Handler($Sender, $Args) {
+        if (!$this->SocialReactions()) {
+            return;
+        }
+
+        if ($this->AddReactButton($Args)) {
+            echo Gdn_Theme::BulletItem('Share') . $this->AddReactButton($Args);
+        }
+    }
+
+    /**
+     * Add 'Reddit' option to the row.
+     */
+    // public function Base_DiscussionFormOptions_Handler($Sender, $Args) {
+    //     if (!$this->AccessToken() || !$this->SocialSharing()) {
+    //         return;
+    //     }
+
+    //     $Options =& $Args['Options'];
+
+    //     $Options .= ' '.
+    //         Wrap($Sender->Form->CheckBox('ShareFacebook', '@' . Sprite('ReactFacebook', 'ReactSprite'), array(
+    //             'value' => '1',
+    //             'title' => sprintf(T('Share to %s.'), 'Facebook')
+    //             )), 'li'). ' ';
+    // }
+
+    public function Base_SignInIcons_Handler() {
+        if (!$this->SocialSignIn()) {
+            return;
+        }
+
+        echo "\n" . $this->AddSigninButton();
+    }
+
+    public function Base_BeforeSignInButton_Handler() {
+        if (!$this->SocialSignIn()) {
+            return;
+        }
+
+        echo "\n" . $this->AddSigninButton();
+    }
+
+    public function Base_BeforeSignInLink_Handler() {
+        if (!$this->SocialSignIn()) {
+            return;
+        }
+
+        if (!Gdn::Session()->IsValid()) {
+            echo "\n" . Wrap($this->AddSigninButton(), 'li', array('class' => 'Connect RedditConnect'));
+        }
+    }
+
+    /**
+     * @param Gdn_Controller $Sender
+     * @param array $Args
+     */
+    public function Base_GetConnections_Handler($Sender, $Args) {
+        $Profile = GetValueR('User.Attributes.' . self::ProviderKey . '.Profile', $Args);
+
+        $Sender->Data['Connections'][self::ProviderKey] = array(
+            'Icon'        => $this->GetWebResource('icon.png', '/'),
+            'Name'        => 'Reddit',
+            'ProviderKey' => self::ProviderKey,
+            'ConnectUrl'  => $this->AuthorizeUri(false, self::ProfileConnectUrl()),
+            'Profile'     => array('Name' => GetValue('name', $Profile))
+        );
+    }
 
     /**
      * @param  PluginController $Sender
@@ -402,59 +539,6 @@ class RedditPlugin extends Gdn_Plugin {
         Redirect('/');
 
         return null;
-    }
-
-    /**
-     * Add 'Reddit' option to the row.
-     */
-    public function Base_DiscussionFormOptions_Handler($Sender, $Args) {
-        if (!$this->AccessToken()) {
-            return;
-        }
-
-        $Options = & $Args['Options'];
-    }
-
-    public function Base_SignInIcons_Handler() {
-        if (!$this->SocialSignIn()) {
-            return;
-        }
-
-        echo "\n" . $this->_GetButton();
-    }
-
-    public function Base_BeforeSignInButton_Handler() {
-        if (!$this->SocialSignIn()) {
-            return;
-        }
-
-        echo "\n" . $this->_GetButton();
-    }
-
-    public function Base_BeforeSignInLink_Handler() {
-        if (!$this->SocialSignIn()) {
-            return;
-        }
-
-        if (!Gdn::Session()->IsValid()) {
-            echo "\n" . Wrap($this->_GetButton(), 'li', array('class' => 'Connect RedditConnect'));
-        }
-    }
-
-    /**
-     * @param Gdn_Controller $Sender
-     * @param array $Args
-     */
-    public function Base_GetConnections_Handler($Sender, $Args) {
-        $Profile = GetValueR('User.Attributes.' . self::ProviderKey . '.Profile', $Args);
-
-        $Sender->Data['Connections'][self::ProviderKey] = array(
-            'Icon'        => $this->GetWebResource('icon.png', '/'),
-            'Name'        => 'Reddit',
-            'ProviderKey' => self::ProviderKey,
-            'ConnectUrl'  => $this->AuthorizeUri(false, self::ProfileConnectUrl()),
-            'Profile'     => array('Name' => GetValue('name', $Profile))
-        );
     }
 
     /**
@@ -620,6 +704,8 @@ class RedditPlugin extends Gdn_Plugin {
                 'Plugins.Reddit.Secret'                => $Form->GetFormValue('Secret'),
                 'Plugins.Reddit.UseRedditNames'        => $Form->GetFormValue('UseRedditNames'),
                 'Plugins.Reddit.SocialSignIn'          => $Form->GetFormValue('SocialSignIn'),
+                'Plugins.Reddit.SocialReactions'       => $Form->GetFormValue('SocialReactions'),
+                //'Plugins.Reddit.SocialSharing'         => $Form->GetFormValue('SocialSharing'),
                 'Garden.Registration.SendConnectEmail' => $Form->GetFormValue('SendConnectEmail')
             );
 
@@ -632,6 +718,8 @@ class RedditPlugin extends Gdn_Plugin {
             $Form->SetValue('UseRedditNames', C('Plugins.Reddit.UseRedditNames'));
             $Form->SetValue('SendConnectEmail', C('Garden.Registration.SendConnectEmail', false));
             $Form->SetValue('SocialSignIn', C('Plugins.Reddit.SocialSignIn', true));
+            $Form->SetValue('SocialReactions', $this->SocialReactions());
+            //$Form->SetValue('SocialSharing', $this->SocialSharing());
         }
 
         $Sender->AddSideMenu('dashboard/social');
