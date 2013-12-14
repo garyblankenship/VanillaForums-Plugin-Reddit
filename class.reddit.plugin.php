@@ -388,7 +388,7 @@ class RedditPlugin extends Gdn_Plugin {
 
         // Interactive Reddit share button (currently in use)
         $ShareBtn  = '<script type="text/javascript">reddit_newwindow="1"; reddit_url="' . Url($Url, true) . '"</script>';
-        $ShareBtn .= '<script type="text/javascript" src="http://www.reddit.com/static/button/button1.js?url=http://vanilla/"></script>';
+        $ShareBtn .= '<script type="text/javascript" src="http://www.reddit.com/buttonlite.js?i=1?url=http://vanilla/"></script>';
 
         // Build React button
         $ReactButton  = ' ';
