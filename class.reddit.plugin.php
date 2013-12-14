@@ -386,13 +386,9 @@ class RedditPlugin extends Gdn_Plugin {
         // Simple share button image
         $ShareImg = '<img src="http://www.reddit.com/static/spreddit1.gif" alt="submit to reddit" border="0">';
 
-        // Interactive Reddit share button (currently in use)
-        $ShareBtn  = '<script type="text/javascript">reddit_newwindow="1"; reddit_url="' . Url($Url, true) . '"</script>';
-        $ShareBtn .= '<script type="text/javascript" src="http://www.reddit.com/buttonlite.js?i=1?url=http://vanilla/"></script>';
-
         // Build React button
         $ReactButton  = ' ';
-        $ReactButton .= Anchor(Sprite('ReactReddit', 'ReactSprite') . $ShareBtn, $ShareUrl, $CssClass);
+        $ReactButton .= Anchor(Sprite('ReactReddit', 'ReactSprite') . $ShareImg, $ShareUrl, $CssClass);
         $ReactButton .= ' ';
 
         return $ReactButton;
