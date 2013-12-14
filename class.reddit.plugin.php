@@ -143,14 +143,6 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * @access public
-     * @return bool
-     */
-    // public function SocialSharing() {
-    //     return C('Plugins.Reddit.SocialSharing', TRUE) && $this->IsConfigured();
-    // }
-
-    /**
      * Check if Social Reactions is enabled and the plugin configured.
      *
      * @access public
@@ -480,23 +472,6 @@ class RedditPlugin extends Gdn_Plugin {
     }
 
     /**
-     * Add 'Reddit' option to the row.
-     */
-    // public function Base_DiscussionFormOptions_Handler($Sender, $Args) {
-    //     if (!$this->AccessToken() || !$this->SocialSharing()) {
-    //         return;
-    //     }
-
-    //     $Options =& $Args['Options'];
-
-    //     $Options .= ' '.
-    //         Wrap($Sender->Form->CheckBox('ShareFacebook', '@' . Sprite('ReactFacebook', 'ReactSprite'), array(
-    //             'value' => '1',
-    //             'title' => sprintf(T('Share to %s.'), 'Facebook')
-    //             )), 'li'). ' ';
-    // }
-
-    /**
      * Echo out the Reddit Sign In button
      *
      * @access public
@@ -763,7 +738,6 @@ class RedditPlugin extends Gdn_Plugin {
                 'Plugins.Reddit.UseRedditNames'        => $Form->GetFormValue('UseRedditNames'),
                 'Plugins.Reddit.SocialSignIn'          => $Form->GetFormValue('SocialSignIn'),
                 'Plugins.Reddit.SocialReactions'       => $Form->GetFormValue('SocialReactions'),
-                //'Plugins.Reddit.SocialSharing'         => $Form->GetFormValue('SocialSharing'),
                 'Garden.Registration.SendConnectEmail' => $Form->GetFormValue('SendConnectEmail')
             );
 
@@ -777,7 +751,6 @@ class RedditPlugin extends Gdn_Plugin {
             $Form->SetValue('SendConnectEmail', C('Garden.Registration.SendConnectEmail', false));
             $Form->SetValue('SocialSignIn', C('Plugins.Reddit.SocialSignIn', true));
             $Form->SetValue('SocialReactions', $this->SocialReactions());
-            //$Form->SetValue('SocialSharing', $this->SocialSharing());
         }
 
         $Sender->AddSideMenu('dashboard/social');
