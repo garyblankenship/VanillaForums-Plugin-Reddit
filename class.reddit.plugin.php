@@ -2,7 +2,7 @@
 /**
  * Reddit Social Connect Plugin
  *
- * Created with the help of the Kasper, Shadowdare, hgtonight, and
+ * Created with the help of Kasper, Shadowdare, hgtonight, and
  * the Vanilla Forums Community.
  *
  * @copyright Copyright (c) 2013 Adrian Speyer (http://www.adrianspeyer.com)
