@@ -1,9 +1,9 @@
 <?php
 /**
- * Reddit Social Connect plugin
+ * Reddit Social Connect Plugin
  *
- * Created with the help of the Shadowdare, hgtonight, kasper and the
- * Vanilla Forums Community.
+ * Created with the help of Kasper, Shadowdare, hgtonight, and
+ * the Vanilla Forums Community.
  *
  * @copyright Copyright (c) 2013 Adrian Speyer (http://www.adrianspeyer.com)
  * @license   http://www.gnu.org/licenses/gpl-2.0.html GPLv2
