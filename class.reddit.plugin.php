@@ -1,16 +1,4 @@
-<?php
-/**
- * Reddit Social Connect Plugin
- *
- * Created with the help of Kasper, Shadowdare, hgtonight, and
- * the Vanilla Forums Community. Inspired by Todd Burry and his 
- * Facebook Plugin.
- *
- * @license   http://www.gnu.org/licenses/gpl-2.0.html GPLv2
- * 
- */
-
-if (!defined('APPLICATION')) exit;
+<?php if (!defined('APPLICATION')) exit;
 
 // Define the plugin
 $PluginInfo['Reddit'] = array(
@@ -39,8 +27,14 @@ $PluginInfo['Reddit'] = array(
 require_once PATH_LIBRARY . '/vendors/oauth/OAuth.php';
 
 /**
- * Class RedditPlugin
+ * Reddit Social Connect Plugin
  *
+ * Created with the help of Kasper, Shadowdare, hgtonight, and
+ * the Vanilla Forums Community. Inspired by Todd Burry and his 
+ * Facebook Plugin.
+ * 
+ * @license http://www.gnu.org/licenses/gpl-2.0.html GPLv2
+ * 
  * @author Adrian Speyer (http://www.adrianspeyer.com)
  * @author Shadowdare (http://gamebyline.com)
  * @author Zachary Doll <Zachary.Doll@gmail.com>
