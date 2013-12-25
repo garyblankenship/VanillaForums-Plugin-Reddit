@@ -4,7 +4,7 @@
 $PluginInfo['Reddit'] = array(
     'Name'                 => 'Reddit Social Connect',
     'Description'          => 'Users may sign into your site using their Reddit account.',
-    'Version'              => '0.1.1',
+    'Version'              => '0.1.2',
     'Author'               => "Adrian Speyer",
     'RequiredApplications' => array('Vanilla' => '2.1b2'),
     'RequiredTheme'        => false,
