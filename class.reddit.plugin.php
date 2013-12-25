@@ -4,7 +4,7 @@
 $PluginInfo['Reddit'] = array(
     'Name'                 => 'Reddit Social Connect',
     'Description'          => 'Users may sign into your site using their Reddit account.',
-    'Version'              => '0.1.0',
+    'Version'              => '0.1.1',
     'Author'               => "Adrian Speyer",
     'RequiredApplications' => array('Vanilla' => '2.1b2'),
     'RequiredTheme'        => false,
@@ -411,7 +411,7 @@ class RedditPlugin extends Gdn_Plugin {
 
         // Build React button
         $ReactButton  = ' ';
-        $ReactButton .= Anchor(Sprite('ReactReddit', 'ReactSprite') . $ShareImg, $ShareUrl, $CssClass);
+        $ReactButton .= Anchor(Sprite('ReactReddit') . $ShareImg, $ShareUrl, $CssClass);
         $ReactButton .= ' ';
 
         return $ReactButton;
